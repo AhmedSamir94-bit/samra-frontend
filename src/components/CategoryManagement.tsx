@@ -4,24 +4,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Edit, Trash2, Tag, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface Category {
-  id: string;
-  name: string;
-  description?: string;
-  color: string;
-}
+import type { Category } from "@/types";
 
 interface CategoryManagementProps {
   categories: Category[];
-  onCategoriesUpdate: (categories: Category[]) => void;
+  onCreate: (data: Omit<Category, "id">) => Promise<void>;
+  onUpdate: (id: string, data: Omit<Category, "id">) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  isSubmitting?: boolean;
 }
 
-const CategoryManagement = ({ categories, onCategoriesUpdate }: CategoryManagementProps) => {
+const CategoryManagement = ({
+  categories,
+  onCreate,
+  onUpdate,
+  onDelete,
+  isSubmitting = false,
+}: CategoryManagementProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
@@ -37,7 +39,7 @@ const CategoryManagement = ({ categories, onCategoriesUpdate }: CategoryManageme
     "#8B5CF6", "#06B6D4", "#84CC16", "#F97316"
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name) {
@@ -49,31 +51,37 @@ const CategoryManagement = ({ categories, onCategoriesUpdate }: CategoryManageme
       return;
     }
 
-    const newCategory: Category = {
-      id: editingCategory ? editingCategory.id : Date.now().toString(),
-      name: formData.name,
-      description: formData.description,
-      color: formData.color
-    };
+    try {
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        color: formData.color
+      };
 
-    if (editingCategory) {
-      const updatedCategories = categories.map(c => c.id === editingCategory.id ? newCategory : c);
-      onCategoriesUpdate(updatedCategories);
+      if (editingCategory) {
+        await onUpdate(editingCategory.id, payload);
+        toast({
+          title: "تم تحديث الفئة",
+          description: `تم تحديث فئة ${payload.name} بنجاح`,
+        });
+      } else {
+        await onCreate(payload);
+        toast({
+          title: "تم إضافة الفئة",
+          description: `تم إضافة فئة ${payload.name} بنجاح`,
+        });
+      }
+
+      setIsDialogOpen(false);
+      setEditingCategory(null);
+      setFormData({ name: "", description: "", color: "#3B82F6" });
+    } catch (error) {
       toast({
-        title: "تم تحديث الفئة",
-        description: `تم تحديث فئة ${newCategory.name} بنجاح`,
-      });
-    } else {
-      onCategoriesUpdate([...categories, newCategory]);
-      toast({
-        title: "تم إضافة الفئة",
-        description: `تم إضافة فئة ${newCategory.name} بنجاح`,
+        title: "خطأ",
+        description: error instanceof Error ? error.message : "فشل حفظ الفئة",
+        variant: "destructive"
       });
     }
-
-    setIsDialogOpen(false);
-    setEditingCategory(null);
-    setFormData({ name: "", description: "", color: "#3B82F6" });
   };
 
   const handleEdit = (category: Category) => {
@@ -86,17 +94,24 @@ const CategoryManagement = ({ categories, onCategoriesUpdate }: CategoryManageme
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    const updatedCategories = categories.filter(c => c.id !== id);
-    onCategoriesUpdate(updatedCategories);
-    toast({
-      title: "تم حذف الفئة",
-      description: "تم حذف الفئة بنجاح",
-    });
+  const handleDelete = async (id: string) => {
+    try {
+      await onDelete(id);
+      toast({
+        title: "تم حذف الفئة",
+        description: "تم حذف الفئة بنجاح",
+      });
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: error instanceof Error ? error.message : "فشل حذف الفئة",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
-    <Card className="bg-white/60 backdrop-blur-sm border-blue-100">
+    <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2 text-blue-800">
@@ -145,22 +160,46 @@ const CategoryManagement = ({ categories, onCategoriesUpdate }: CategoryManageme
                 </div>
                 <div>
                   <Label className="text-right">لون الفئة</Label>
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {colors.map((color) => (
                       <button
                         key={color}
                         type="button"
                         className={`w-8 h-8 rounded-full border-2 ${
-                          formData.color === color ? 'border-gray-800' : 'border-gray-300'
+                          formData.color.toLowerCase() === color.toLowerCase()
+                            ? "border-gray-800"
+                            : "border-gray-300"
                         }`}
                         style={{ backgroundColor: color }}
                         onClick={() => setFormData({ ...formData, color })}
+                        aria-label={`اختيار اللون ${color}`}
                       />
                     ))}
                   </div>
+                  <div className="flex items-center gap-3 mt-3">
+                    <Label htmlFor="categoryColor" className="shrink-0">
+                      لون مخصص
+                    </Label>
+                    <input
+                      id="categoryColor"
+                      type="color"
+                      value={formData.color}
+                      onChange={(e) =>
+                        setFormData({ ...formData, color: e.target.value.toUpperCase() })
+                      }
+                      className="h-10 w-14 cursor-pointer rounded-md border border-input bg-background p-1"
+                    />
+                    <Input
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      placeholder="#3B82F6"
+                      className="flex-1 font-mono uppercase"
+                      dir="ltr"
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2 pt-4">
-                  <Button type="submit" className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500">
+                  <Button type="submit" disabled={isSubmitting} className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500">
                     {editingCategory ? "تحديث" : "إضافة"}
                   </Button>
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>

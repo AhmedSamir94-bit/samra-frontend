@@ -1,78 +1,68 @@
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { FileText, Calendar, TrendingUp, ShoppingCart, Package, DollarSign } from "lucide-react";
+import { FileText, Calendar, TrendingUp, ShoppingCart, Package, DollarSign, Loader2 } from "lucide-react";
+import { formatCurrency } from "@/lib/currency";
+import { api } from "@/lib/api";
+import type {
+  ProfitsReportRow,
+  PurchasedItemsRow,
+  PurchasesReportRow,
+  ReportType,
+  SalesReportRow,
+  SoldItemsRow,
+  TopSellingRow,
+} from "@/types";
 
 const ReportsSection = () => {
-  const [selectedReport, setSelectedReport] = useState("sales");
+  const [selectedReport, setSelectedReport] = useState<ReportType>("sales");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [shouldFetch, setShouldFetch] = useState(true);
 
-  // Mock data for different reports
-  const salesReportData = [
-    { date: "2024-12-01", invoices: 25, total: 5420.50 },
-    { date: "2024-12-02", invoices: 18, total: 3280.75 },
-    { date: "2024-12-03", invoices: 32, total: 7150.25 },
-    { date: "2024-12-04", invoices: 28, total: 6340.80 },
-    { date: "2024-12-05", invoices: 35, total: 8920.40 }
-  ];
-
-  const purchaseReportData = [
-    { date: "2024-12-01", invoices: 5, total: 2150.00, items: 45 },
-    { date: "2024-12-02", invoices: 3, total: 1820.50, items: 32 },
-    { date: "2024-12-03", invoices: 7, total: 3240.75, items: 58 },
-    { date: "2024-12-04", invoices: 4, total: 1950.25, items: 38 },
-    { date: "2024-12-05", invoices: 6, total: 2780.90, items: 52 }
-  ];
-
-  const profitReportData = [
-    { date: "2024-12-01", sales: 5420.50, purchases: 2150.00, profit: 3270.50 },
-    { date: "2024-12-02", sales: 3280.75, purchases: 1820.50, profit: 1460.25 },
-    { date: "2024-12-03", sales: 7150.25, purchases: 3240.75, profit: 3909.50 },
-    { date: "2024-12-04", sales: 6340.80, purchases: 1950.25, profit: 4390.55 },
-    { date: "2024-12-05", sales: 8920.40, purchases: 2780.90, profit: 6139.50 }
-  ];
-
-  const topSellingProducts = [
-    { name: "كوكا كولا", quantity: 125, revenue: 312.50 },
-    { name: "شيبس", quantity: 98, revenue: 147.00 },
-    { name: "شوكولاتة", quantity: 87, revenue: 261.00 },
-    { name: "عصير برتقال", quantity: 76, revenue: 304.00 },
-    { name: "قهوة", quantity: 65, revenue: 325.00 }
-  ];
-
-  const purchasedItems = [
-    { name: "كوكا كولا", quantity: 200, cost: 400.00 },
-    { name: "شيبس", quantity: 150, cost: 225.00 },
-    { name: "شوكولاتة", quantity: 120, cost: 240.00 },
-    { name: "عصير برتقال", quantity: 100, cost: 300.00 },
-    { name: "قهوة", quantity: 80, cost: 240.00 }
-  ];
-
-  const soldItems = [
-    { name: "كوكا كولا", quantity: 125, remaining: 75 },
-    { name: "شيبس", quantity: 98, remaining: 52 },
-    { name: "شوكولاتة", quantity: 87, remaining: 33 },
-    { name: "عصير برتقال", quantity: 76, remaining: 24 },
-    { name: "قهوة", quantity: 65, remaining: 15 }
-  ];
+  const { data: reportData = [], isLoading, isFetching, refetch } = useQuery({
+    queryKey: ["reports", selectedReport, dateFrom, dateTo],
+    queryFn: () => api.getReport(selectedReport, dateFrom || undefined, dateTo || undefined),
+    enabled: shouldFetch,
+  });
 
   const generateReport = () => {
-    console.log(`Generating ${selectedReport} report from ${dateFrom} to ${dateTo}`);
+    setShouldFetch(true);
+    refetch();
   };
 
   const renderReportContent = () => {
+    if (isLoading || isFetching) {
+      return (
+        <div className="flex justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      );
+    }
+
     switch (selectedReport) {
-      case "sales":
+      case "sales": {
+        const rows = reportData as SalesReportRow[];
+        const totals = rows.reduce(
+          (acc, row) => ({
+            quantitySold: acc.quantitySold + Number(row.quantitySold ?? 0),
+            revenue: acc.revenue + Number(row.revenue ?? 0),
+            cogs: acc.cogs + Number(row.cogs ?? 0),
+            netProfit: acc.netProfit + Number(row.netProfit ?? 0),
+          }),
+          { quantitySold: 0, revenue: 0, cogs: 0, netProfit: 0 },
+        );
+
         return (
           <div className="space-y-6">
-            <Card className="bg-white/80 backdrop-blur-sm border-blue-100">
+            <Card className="bg-white/80 backdrop-blur-sm border-blue-100" dir="rtl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-blue-800">
                   <TrendingUp className="w-5 h-5" />
@@ -80,6 +70,26 @@ const ReportsSection = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  <div className="rounded-lg bg-green-50 border border-green-100 p-4">
+                    <p className="text-sm text-gray-600">إجمالي الإيرادات</p>
+                    <p className="text-2xl font-bold text-green-700">
+                      {formatCurrency(totals.revenue)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-orange-50 border border-orange-100 p-4">
+                    <p className="text-sm text-gray-600">التكلفة</p>
+                    <p className="text-2xl font-bold text-orange-700">
+                      {formatCurrency(totals.cogs)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-purple-50 border border-purple-100 p-4">
+                    <p className="text-sm text-gray-600">صافي الربح</p>
+                    <p className={`text-2xl font-bold ${totals.netProfit >= 0 ? "text-purple-700" : "text-red-600"}`}>
+                      {formatCurrency(totals.netProfit)}
+                    </p>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <Table>
@@ -87,16 +97,28 @@ const ReportsSection = () => {
                         <TableRow>
                           <TableHead className="text-right">التاريخ</TableHead>
                           <TableHead className="text-right">عدد الفواتير</TableHead>
-                          <TableHead className="text-right">إجمالي المبيعات</TableHead>
+                          <TableHead className="text-right">إجمالي القطع</TableHead>
+                          <TableHead className="text-right">الإيرادات</TableHead>
+                          <TableHead className="text-right">التكلفة</TableHead>
+                          <TableHead className="text-right">صافي الربح</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {salesReportData.map((item, index) => (
+                        {rows.map((item, index) => (
                           <TableRow key={index}>
                             <TableCell>{item.date}</TableCell>
                             <TableCell>{item.invoices}</TableCell>
                             <TableCell className="font-semibold text-blue-600">
-                              {item.total.toFixed(2)} ريال
+                              {item.quantitySold}
+                            </TableCell>
+                            <TableCell className="font-semibold text-green-600">
+                              {formatCurrency(item.revenue)}
+                            </TableCell>
+                            <TableCell className="font-semibold text-orange-600">
+                              {formatCurrency(item.cogs ?? 0)}
+                            </TableCell>
+                            <TableCell className={`font-semibold ${item.netProfit >= 0 ? "text-purple-600" : "text-red-600"}`}>
+                              {formatCurrency(item.netProfit ?? 0)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -105,12 +127,19 @@ const ReportsSection = () => {
                   </div>
                   <div>
                     <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={salesReportData}>
+                      <BarChart data={rows}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" />
                         <YAxis />
-                        <Tooltip formatter={(value) => [`${value} ريال`, 'المبيعات']} />
-                        <Bar dataKey="total" fill="#3B82F6" />
+                        <Tooltip
+                          formatter={(value, name) => {
+                            if (name === "revenue") {
+                              return [formatCurrency(Number(value)), "الإيرادات"];
+                            }
+                            return [value, "القطع المباعة"];
+                          }}
+                        />
+                        <Bar dataKey="revenue" fill="#10B981" name="revenue" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -119,6 +148,7 @@ const ReportsSection = () => {
             </Card>
           </div>
         );
+      }
 
       case "purchases":
         return (
@@ -140,13 +170,13 @@ const ReportsSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {purchaseReportData.map((item, index) => (
+                  {(reportData as PurchasesReportRow[]).map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>{item.date}</TableCell>
                       <TableCell>{item.invoices}</TableCell>
                       <TableCell>{item.items}</TableCell>
                       <TableCell className="font-semibold text-green-600">
-                        {item.total.toFixed(2)} ريال
+                        {formatCurrency(item.total)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -156,9 +186,20 @@ const ReportsSection = () => {
           </Card>
         );
 
-      case "profits":
+      case "profits": {
+        const rows = reportData as ProfitsReportRow[];
+        const totals = rows.reduce(
+          (acc, row) => ({
+            revenue: acc.revenue + Number(row.revenue ?? 0),
+            cogs: acc.cogs + Number(row.cogs ?? 0),
+            netProfit: acc.netProfit + Number(row.netProfit ?? 0),
+            purchases: acc.purchases + Number(row.purchases ?? 0),
+          }),
+          { revenue: 0, cogs: 0, netProfit: 0, purchases: 0 },
+        );
+
         return (
-          <Card className="bg-white/80 backdrop-blur-sm border-blue-100">
+          <Card className="bg-white/80 backdrop-blur-sm border-blue-100" dir="rtl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-blue-800">
                 <DollarSign className="w-5 h-5" />
@@ -166,24 +207,42 @@ const ReportsSection = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="rounded-lg bg-green-50 border border-green-100 p-4">
+                  <p className="text-sm text-gray-600">إجمالي الإيرادات</p>
+                  <p className="text-2xl font-bold text-green-700">{formatCurrency(totals.revenue)}</p>
+                </div>
+                <div className="rounded-lg bg-orange-50 border border-orange-100 p-4">
+                  <p className="text-sm text-gray-600">التكلفة</p>
+                  <p className="text-2xl font-bold text-orange-700">{formatCurrency(totals.cogs)}</p>
+                </div>
+                <div className="rounded-lg bg-purple-50 border border-purple-100 p-4">
+                  <p className="text-sm text-gray-600">صافي الربح</p>
+                  <p className={`text-2xl font-bold ${totals.netProfit >= 0 ? "text-purple-700" : "text-red-600"}`}>
+                    {formatCurrency(totals.netProfit)}
+                  </p>
+                </div>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right">التاريخ</TableHead>
-                    <TableHead className="text-right">المبيعات</TableHead>
-                    <TableHead className="text-right">المشتريات</TableHead>
+                    <TableHead className="text-right">الإيرادات</TableHead>
+                    <TableHead className="text-right">التكلفة</TableHead>
                     <TableHead className="text-right">صافي الربح</TableHead>
+                    <TableHead className="text-right">المشتريات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {profitReportData.map((item, index) => (
+                  {rows.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>{item.date}</TableCell>
-                      <TableCell className="text-blue-600">{item.sales.toFixed(2)} ريال</TableCell>
-                      <TableCell className="text-red-600">{item.purchases.toFixed(2)} ريال</TableCell>
-                      <TableCell className="font-semibold text-green-600">
-                        {item.profit.toFixed(2)} ريال
+                      <TableCell className="text-green-600">{formatCurrency(item.revenue)}</TableCell>
+                      <TableCell className="text-orange-600">{formatCurrency(item.cogs)}</TableCell>
+                      <TableCell className={`font-semibold ${item.netProfit >= 0 ? "text-purple-600" : "text-red-600"}`}>
+                        {formatCurrency(item.netProfit)}
                       </TableCell>
+                      <TableCell className="text-red-600">{formatCurrency(item.purchases)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -191,6 +250,7 @@ const ReportsSection = () => {
             </CardContent>
           </Card>
         );
+      }
 
       case "top-selling":
         return (
@@ -211,12 +271,12 @@ const ReportsSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {topSellingProducts.map((item, index) => (
+                  {(reportData as TopSellingRow[]).map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.quantity}</TableCell>
                       <TableCell className="font-semibold text-blue-600">
-                        {item.revenue.toFixed(2)} ريال
+                        {formatCurrency(item.revenue)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -245,12 +305,12 @@ const ReportsSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {purchasedItems.map((item, index) => (
+                  {(reportData as PurchasedItemsRow[]).map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.quantity}</TableCell>
                       <TableCell className="font-semibold text-green-600">
-                        {item.cost.toFixed(2)} ريال
+                        {formatCurrency(item.cost)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -279,7 +339,7 @@ const ReportsSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {soldItems.map((item, index) => (
+                  {(reportData as SoldItemsRow[]).map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell className="text-blue-600">{item.quantity}</TableCell>
@@ -300,14 +360,12 @@ const ReportsSection = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-6" dir="rtl">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-blue-800">التقارير والإحصائيات</h2>
       </div>
 
-      {/* Report Selection and Filters */}
-      <Card className="bg-white/60 backdrop-blur-sm border-blue-100">
+      <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-800">
             <FileText className="w-6 h-6" />
@@ -318,7 +376,7 @@ const ReportsSection = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>نوع التقرير</Label>
-              <Select value={selectedReport} onValueChange={setSelectedReport}>
+              <Select value={selectedReport} onValueChange={(value) => setSelectedReport(value as ReportType)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -335,19 +393,19 @@ const ReportsSection = () => {
             
             <div className="space-y-2">
               <Label>من تاريخ</Label>
-              <Input
-                type="date"
+              <DateInput
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={setDateFrom}
+                placeholder="من تاريخ"
               />
             </div>
             
             <div className="space-y-2">
               <Label>إلى تاريخ</Label>
-              <Input
-                type="date"
+              <DateInput
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={setDateTo}
+                placeholder="إلى تاريخ"
               />
             </div>
             
@@ -365,7 +423,6 @@ const ReportsSection = () => {
         </CardContent>
       </Card>
 
-      {/* Report Content */}
       {renderReportContent()}
     </div>
   );

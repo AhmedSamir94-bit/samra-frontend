@@ -1,82 +1,120 @@
-
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Plus, Calendar, Building, Package, Receipt, User } from "lucide-react";
+import { FileText, Plus, Calendar, Building, Receipt, Loader2, Barcode, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/currency";
+import { calculatePurchaseItemsTotal } from "@/lib/invoice-math";
+import { api } from "@/lib/api";
+import {
+  createPurchaseItemFromBarcode,
+  lookupProductByBarcode,
+  upsertPurchaseItemByProduct,
+} from "@/lib/barcode";
+import type { PurchaseInvoice, PurchaseItem } from "@/types";
+import BarcodeScannerInput from "@/components/BarcodeScannerInput";
 
-interface Category {
-  id: string;
-  name: string;
-  color: string;
+const emptyItem = (): PurchaseItem => ({
+  productName: "",
+  barcode: "",
+  quantity: 0,
+  purchasePrice: 0,
+  salePrice: 0,
+  category: "",
+});
+
+function getTodayDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-interface InvoiceItem {
-  productName: string;
-  barcode: string;
-  quantity: number;
-  purchasePrice: number;
-  salePrice: number;
-  category: string;
-}
-
-interface PurchaseInvoice {
-  id: string;
-  invoiceNumber: string;
-  supplier: string;
-  date: string;
-  time: string;
-  items: InvoiceItem[];
-  total: number;
-}
+const initialInvoiceData = () => ({
+  invoiceNumber: "",
+  supplier: "",
+  date: getTodayDateString(),
+});
 
 const PurchaseInvoices = () => {
-  const [categories] = useState<Category[]>([
-    { id: "1", name: "مشروبات", color: "#3B82F6" },
-    { id: "2", name: "وجبات خفيفة", color: "#10B981" },
-    { id: "3", name: "حلويات", color: "#F59E0B" }
-  ]);
-
-  const [invoices, setInvoices] = useState<PurchaseInvoice[]>([
-    {
-      id: "1",
-      invoiceNumber: "INV-001",
-      supplier: "شركة التوزيع الشاملة",
-      date: "2024-01-15",
-      time: "10:30",
-      items: [
-        { productName: "كوكا كولا", barcode: "1234567890123", quantity: 50, purchasePrice: 2, salePrice: 2.5, category: "مشروبات" },
-        { productName: "شيبس", barcode: "1234567890124", quantity: 30, purchasePrice: 1, salePrice: 1.5, category: "وجبات خفيفة" }
-      ],
-      total: 130
-    }
-  ]);
-
   const [selectedInvoice, setSelectedInvoice] = useState<PurchaseInvoice | null>(null);
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [invoiceData, setInvoiceData] = useState({
-    invoiceNumber: "",
-    supplier: "",
-    date: ""
-  });
-  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([
-    { productName: "", barcode: "", quantity: 0, purchasePrice: 0, salePrice: 0, category: "" }
-  ]);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<PurchaseInvoice | null>(null);
+  const [invoiceData, setInvoiceData] = useState(initialInvoiceData);
+  const [invoiceItems, setInvoiceItems] = useState<PurchaseItem[]>([emptyItem()]);
 
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const resetCreateForm = useCallback(async () => {
+    setEditingInvoice(null);
+    setInvoiceItems([emptyItem()]);
+    setInvoiceData({ ...initialInvoiceData(), invoiceNumber: "..." });
+
+    try {
+      const { invoiceNumber } = await api.getNextPurchaseInvoiceNumber();
+      setInvoiceData({ ...initialInvoiceData(), invoiceNumber });
+    } catch {
+      setInvoiceData(initialInvoiceData());
+    }
+  }, []);
+
+  const openEditForm = useCallback((invoice: PurchaseInvoice) => {
+    setEditingInvoice(invoice);
+    setInvoiceData({
+      invoiceNumber: invoice.invoiceNumber,
+      supplier: invoice.supplier,
+      date: invoice.date,
+    });
+    setInvoiceItems(invoice.items.length > 0 ? invoice.items.map((item) => ({ ...item })) : [emptyItem()]);
+    setIsInvoiceDialogOpen(false);
+    setIsFormDialogOpen(true);
+  }, []);
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: api.getCategories,
+  });
+
+  const { data: invoices = [], isLoading } = useQuery({
+    queryKey: ["purchases"],
+    queryFn: () => api.getPurchases(),
+  });
+
+  const createPurchaseMutation = useMutation({
+    mutationFn: api.createPurchase,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+
+  const updatePurchaseMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof api.updatePurchase>[1] }) =>
+      api.updatePurchase(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+
+  const isSaving = createPurchaseMutation.isPending || updatePurchaseMutation.isPending;
 
   const addInvoiceItem = () => {
-    setInvoiceItems([...invoiceItems, { productName: "", barcode: "", quantity: 0, purchasePrice: 0, salePrice: 0, category: "" }]);
+    setInvoiceItems([...invoiceItems, emptyItem()]);
   };
 
-  const updateInvoiceItem = (index: number, field: keyof InvoiceItem, value: any) => {
+  const updateInvoiceItem = (index: number, field: keyof PurchaseItem, value: string | number) => {
     const updatedItems = invoiceItems.map((item, i) => 
       i === index ? { ...item, [field]: value } : item
     );
@@ -89,17 +127,52 @@ const PurchaseInvoices = () => {
     }
   };
 
-  const calculateTotal = () => {
-    return invoiceItems.reduce((total, item) => total + (item.quantity * item.purchasePrice), 0);
-  };
+  const handlePurchaseBarcodeScan = useCallback(async (barcode: string) => {
+    const product = await lookupProductByBarcode(barcode);
 
-  const handleSubmit = (e: React.FormEvent) => {
+    if (product) {
+      setInvoiceItems((items) => upsertPurchaseItemByProduct(items, product));
+      toast({
+        title: "تم مسح الباركود",
+        description: `تم إضافة ${product.name} إلى الفاتورة`,
+      });
+      return;
+    }
+
+    setInvoiceItems((items) => {
+      const existingIndex = items.findIndex((item) => item.barcode === barcode);
+      if (existingIndex >= 0) {
+        return items.map((item, i) =>
+          i === existingIndex ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+
+      const emptyIndex = items.findIndex(
+        (item) => !item.productName && !item.barcode && item.quantity === 0
+      );
+
+      const newItem = createPurchaseItemFromBarcode(barcode);
+      if (emptyIndex >= 0) {
+        return items.map((item, i) => (i === emptyIndex ? newItem : item));
+      }
+      return [...items, newItem];
+    });
+
+    toast({
+      title: "باركود جديد",
+      description: "تم إضافة الباركود — أكمل بيانات المنتج الجديد",
+    });
+  }, [toast]);
+
+  const calculateTotal = () => calculatePurchaseItemsTotal(invoiceItems);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!invoiceData.invoiceNumber || !invoiceData.supplier || !invoiceData.date) {
+    if (!invoiceData.supplier) {
       toast({
         title: "خطأ في البيانات",
-        description: "يرجى ملء جميع بيانات الفاتورة",
+        description: "يرجى إدخال اسم المورد",
         variant: "destructive"
       });
       return;
@@ -116,24 +189,35 @@ const PurchaseInvoices = () => {
       return;
     }
 
-    const newInvoice: PurchaseInvoice = {
-      id: Date.now().toString(),
-      ...invoiceData,
-      time: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
-      items: validItems,
-      total: calculateTotal()
-    };
+    try {
+      const payload = {
+        supplier: invoiceData.supplier,
+        date: invoiceData.date || getTodayDateString(),
+        items: validItems,
+      };
 
-    setInvoices([newInvoice, ...invoices]);
-    
-    toast({
-      title: "تم إضافة الفاتورة",
-      description: `تم إضافة فاتورة الشراء ${invoiceData.invoiceNumber} بنجاح`,
-    });
+      const purchase = editingInvoice
+        ? await updatePurchaseMutation.mutateAsync({ id: editingInvoice.id, data: payload })
+        : await createPurchaseMutation.mutateAsync(payload);
+      
+      toast({
+        title: editingInvoice ? "تم تحديث الفاتورة" : "تم إضافة الفاتورة",
+        description: editingInvoice
+          ? `تم تحديث فاتورة الشراء ${purchase.invoiceNumber} بنجاح`
+          : `تم إضافة فاتورة الشراء ${purchase.invoiceNumber} بنجاح`,
+      });
 
-    setIsAddDialogOpen(false);
-    setInvoiceData({ invoiceNumber: "", supplier: "", date: "" });
-    setInvoiceItems([{ productName: "", barcode: "", quantity: 0, purchasePrice: 0, salePrice: 0, category: "" }]);
+      setIsFormDialogOpen(false);
+      setEditingInvoice(null);
+      setInvoiceData(initialInvoiceData());
+      setInvoiceItems([emptyItem()]);
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: error instanceof Error ? error.message : "فشل حفظ الفاتورة",
+        variant: "destructive"
+      });
+    }
   };
 
   const getCategoryColor = (categoryName: string) => {
@@ -143,10 +227,9 @@ const PurchaseInvoices = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <Card className="bg-white/60 backdrop-blur-sm border-blue-100">
+      <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center" dir="rtl">
             <div>
               <CardTitle className="flex items-center gap-2 text-blue-800">
                 <FileText className="w-6 h-6" />
@@ -156,28 +239,46 @@ const PurchaseInvoices = () => {
                 إجمالي الفواتير: {invoices.length} فاتورة
               </p>
             </div>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <Dialog
+              open={isFormDialogOpen}
+              onOpenChange={(open) => {
+                setIsFormDialogOpen(open);
+                if (open && !editingInvoice) {
+                  void resetCreateForm();
+                }
+                if (!open) {
+                  setEditingInvoice(null);
+                }
+              }}
+            >
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
+                <Button
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
+                  onClick={() => {
+                    setEditingInvoice(null);
+                    void resetCreateForm();
+                  }}
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   إضافة فاتورة شراء
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" dir="rtl">
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" >
                 <DialogHeader>
-                  <DialogTitle>إضافة فاتورة شراء جديدة</DialogTitle>
+                  <DialogTitle>
+                    {editingInvoice ? "تعديل فاتورة شراء" : "إضافة فاتورة شراء جديدة"}
+                  </DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Invoice Header */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <form onSubmit={handleSubmit} className="space-y-6" dir="rtl">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-scanner-ignore>
                     <div>
-                      <Label htmlFor="invoiceNumber">رقم الفاتورة *</Label>
+                      <Label htmlFor="invoiceNumber">رقم الفاتورة</Label>
                       <Input
                         id="invoiceNumber"
                         value={invoiceData.invoiceNumber}
-                        onChange={(e) => setInvoiceData({ ...invoiceData, invoiceNumber: e.target.value })}
-                        placeholder="INV-001"
-                        required
+                        readOnly
+                        className="bg-gray-50 text-gray-700 cursor-default"
+                        placeholder="يتم التوليد تلقائياً"
                       />
                     </div>
                     <div>
@@ -191,20 +292,34 @@ const PurchaseInvoices = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="date">تاريخ الفاتورة *</Label>
-                      <Input
+                      <Label htmlFor="date">تاريخ الفاتورة</Label>
+                      <DateInput
                         id="date"
-                        type="date"
                         value={invoiceData.date}
-                        onChange={(e) => setInvoiceData({ ...invoiceData, date: e.target.value })}
-                        required
+                        onChange={(date) => setInvoiceData({ ...invoiceData, date })}
+                        placeholder="اختر تاريخ الفاتورة"
                       />
                     </div>
                   </div>
 
-                  {/* Invoice Items */}
+                  <Card className="p-4 bg-blue-50 border-blue-200">
+                    <div className="flex items-center gap-2 mb-3 text-blue-800">
+                      <Barcode className="w-5 h-5" />
+                      <Label className="text-base font-semibold">مسح الباركود لإضافة بنود</Label>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      امسح باركود المنتج — إذا كان مسجلاً يُملأ تلقائياً، وإلا أدخل بيانات المنتج الجديد
+                    </p>
+                    <BarcodeScannerInput
+                      onScan={handlePurchaseBarcodeScan}
+                      autoFocus={isFormDialogOpen}
+                      keepFocus
+                      placeholder="امسح باركود المنتج بالقارئ..."
+                    />
+                  </Card>
+
                   <div>
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-4" dir="rtl">
                       <Label className="text-lg font-semibold">بنود الفاتورة</Label>
                       <Button type="button" variant="outline" onClick={addInvoiceItem}>
                         <Plus className="w-4 h-4 mr-2" />
@@ -214,7 +329,7 @@ const PurchaseInvoices = () => {
                     
                     <div className="space-y-4">
                       {invoiceItems.map((item, index) => (
-                        <Card key={index} className="p-4 bg-blue-50 border-blue-200">
+                        <Card key={index} className="p-4 bg-blue-50 border-blue-200" dir="rtl" data-scanner-ignore>
                           <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
                             <div>
                               <Label>اسم المنتج</Label>
@@ -302,20 +417,28 @@ const PurchaseInvoices = () => {
                     </div>
                   </div>
 
-                  {/* Total */}
-                  <div className="bg-gray-100 p-4 rounded-lg">
+                  <div className="bg-gray-100 p-4 rounded-lg" dir="rtl">
                     <div className="flex justify-between items-center text-lg font-bold">
                       <span>إجمالي الفاتورة:</span>
-                      <span className="text-blue-600">{calculateTotal().toFixed(2)} ريال</span>
+                      <span className="text-blue-600">{formatCurrency(calculateTotal())}</span>
                     </div>
                   </div>
 
-                  {/* Submit Buttons */}
                   <div className="flex gap-2">
-                    <Button type="submit" className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500">
-                      حفظ الفاتورة
+                    <Button
+                      type="submit"
+                      disabled={isSaving}
+                      className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500"
+                    >
+                      {isSaving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : editingInvoice ? (
+                        "حفظ التعديلات"
+                      ) : (
+                        "حفظ الفاتورة"
+                      )}
                     </Button>
-                    <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    <Button type="button" variant="outline" onClick={() => setIsFormDialogOpen(false)}>
                       إلغاء
                     </Button>
                   </div>
@@ -326,8 +449,7 @@ const PurchaseInvoices = () => {
         </CardHeader>
       </Card>
 
-      {/* Purchase Invoices List */}
-      <Card className="bg-white/60 backdrop-blur-sm border-blue-100">
+      <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-800">
             <Receipt className="w-5 h-5" />
@@ -335,7 +457,11 @@ const PurchaseInvoices = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {invoices.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          ) : invoices.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <p>لا توجد فواتير شراء حتى الآن</p>
@@ -373,11 +499,24 @@ const PurchaseInvoices = () => {
                       </div>
                       <div className="text-left">
                         <div className="text-lg font-bold text-blue-600">
-                          {invoice.total.toFixed(2)} ريال
+                          {formatCurrency(calculatePurchaseItemsTotal(invoice.items))}
                         </div>
-                        <Button variant="ghost" size="sm" className="mt-1">
-                          عرض التفاصيل
-                        </Button>
+                        <div className="flex gap-1 mt-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditForm(invoice);
+                            }}
+                          >
+                            <Pencil className="w-3 h-3 mr-1" />
+                            تعديل
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            عرض التفاصيل
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -388,9 +527,8 @@ const PurchaseInvoices = () => {
         </CardContent>
       </Card>
 
-      {/* Invoice Details Dialog */}
       <Dialog open={isInvoiceDialogOpen} onOpenChange={setIsInvoiceDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" dir="rtl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
@@ -399,8 +537,7 @@ const PurchaseInvoices = () => {
           </DialogHeader>
           
           {selectedInvoice && (
-            <div className="space-y-6">
-              {/* Invoice Header */}
+            <div className="space-y-6" dir="rtl">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-blue-50 rounded-lg">
                 <div>
                   <span className="text-sm text-gray-600">رقم الفاتورة</span>
@@ -420,7 +557,6 @@ const PurchaseInvoices = () => {
                 </div>
               </div>
 
-              {/* Invoice Items */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">تفاصيل المنتجات</h3>
                 <Table>
@@ -450,11 +586,13 @@ const PurchaseInvoices = () => {
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell>{item.purchasePrice.toFixed(2)} ريال</TableCell>
-                        <TableCell className="text-green-600 font-medium">{item.salePrice.toFixed(2)} ريال</TableCell>
+                        <TableCell>{formatCurrency(item.purchasePrice)}</TableCell>
+                        <TableCell className="text-green-600 font-medium">{formatCurrency(item.salePrice)}</TableCell>
                         <TableCell>{item.quantity}</TableCell>
                         <TableCell className="font-semibold">
-                          {(item.purchasePrice * item.quantity).toFixed(2)} ريال
+                          {formatCurrency(
+                            Number(item.quantity) * Number(item.purchasePrice),
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -462,16 +600,23 @@ const PurchaseInvoices = () => {
                 </Table>
               </div>
 
-              {/* Invoice Total */}
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center text-xl font-bold">
                   <span>المبلغ الإجمالي:</span>
-                  <span className="text-blue-600">{selectedInvoice.total.toFixed(2)} ريال</span>
+                  <span className="text-blue-600">
+                    {formatCurrency(calculatePurchaseItemsTotal(selectedInvoice.items))}
+                  </span>
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="flex gap-2 pt-4">
+                <Button
+                  onClick={() => openEditForm(selectedInvoice)}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500"
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  تعديل الفاتورة
+                </Button>
                 <Button variant="outline" onClick={() => setIsInvoiceDialogOpen(false)} className="flex-1">
                   إغلاق
                 </Button>
