@@ -13,6 +13,8 @@ interface UseBarcodeScannerOptions {
 
 const recentScans = new Map<string, number>();
 
+export const BARCODE_SCANNED_EVENT = "samra:barcode-scanned";
+
 export function emitBarcodeScan(
   barcode: string,
   onScan: (barcode: string) => void | Promise<void>,
@@ -30,6 +32,12 @@ export function emitBarcodeScan(
   recentScans.set(code, now);
 
   console.log(`[barcode] scan accepted (${source}):`, code);
+
+  // Update every scanner input UI with the code that was just read
+  window.dispatchEvent(
+    new CustomEvent(BARCODE_SCANNED_EVENT, { detail: { barcode: code, source } }),
+  );
+
   void Promise.resolve(onScan(code)).catch((err) => {
     console.error("[barcode] onScan error:", err);
   });

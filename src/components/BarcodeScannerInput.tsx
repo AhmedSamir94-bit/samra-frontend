@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Barcode } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  BARCODE_SCANNED_EVENT,
+  emitBarcodeScan,
+} from "@/hooks/use-barcode-scanner";
 
 interface BarcodeScannerInputProps {
   onScan: (barcode: string) => void | Promise<void>;
@@ -14,9 +18,8 @@ interface BarcodeScannerInputProps {
 }
 
 /**
- * Visual focus landing pad for the scanner.
- * Full barcode capture is done by useBarcodeScanner (global keydown).
- * Manual Enter here is only a fallback for typing a full code by hand.
+ * Shows the last scanned barcode in the field.
+ * Capture is handled by useBarcodeScanner; this input is the visual target.
  */
 const BarcodeScannerInput = ({
   onScan,
@@ -28,6 +31,7 @@ const BarcodeScannerInput = ({
 }: BarcodeScannerInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
+  const [flash, setFlash] = useState(false);
   const onScanRef = useRef(onScan);
   onScanRef.current = onScan;
 
@@ -39,17 +43,34 @@ const BarcodeScannerInput = ({
     el.focus({ preventScroll: true });
   }, [disabled]);
 
+  const showScannedValue = useCallback((code: string) => {
+    setValue(code);
+    setFlash(true);
+    window.setTimeout(() => setFlash(false), 450);
+    console.log("[barcode] input display updated:", code);
+  }, []);
+
+  // Reflect every accepted scan in this field (sales / products / purchases)
+  useEffect(() => {
+    const onScanned = (event: Event) => {
+      const detail = (event as CustomEvent<{ barcode?: string }>).detail;
+      const code = detail?.barcode?.trim();
+      if (!code) return;
+      showScannedValue(code);
+    };
+
+    window.addEventListener(BARCODE_SCANNED_EVENT, onScanned);
+    return () => window.removeEventListener(BARCODE_SCANNED_EVENT, onScanned);
+  }, [showScannedValue]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Do not stopPropagation — global listener owns wedge scans.
-    // Manual fallback only when a full code was typed slowly into this field.
+    // Manual fallback if someone pastes/types a full code somehow
     if (e.key === "Enter") {
       const code = (e.currentTarget.value || value).trim();
       if (code.length >= 3) {
         console.log("[barcode] input manual Enter fallback:", code);
         e.preventDefault();
-        setValue("");
-        if (inputRef.current) inputRef.current.value = "";
-        void onScanRef.current(code);
+        emitBarcodeScan(code, onScanRef.current, "scanner-input-manual");
       }
     }
   };
@@ -63,8 +84,6 @@ const BarcodeScannerInput = ({
   useEffect(() => {
     if (!keepFocus || disabled) return;
 
-    // Soft reclaim only when focus is on the page chrome (not form fields).
-    // Long interval avoids fighting the scanner mid-burst.
     const interval = window.setInterval(() => {
       const active = document.activeElement as HTMLElement | null;
       if (!active || active === document.body) {
@@ -104,7 +123,8 @@ const BarcodeScannerInput = ({
         spellCheck={false}
         data-barcode-scanner="true"
         className={cn(
-          "pr-10 text-center font-mono text-lg tracking-wider caret-transparent",
+          "pr-10 text-center font-mono text-lg tracking-wider caret-transparent transition-colors",
+          flash && "border-green-500 bg-green-50 text-green-800",
           className,
         )}
         aria-label="قارئ الباركود"
