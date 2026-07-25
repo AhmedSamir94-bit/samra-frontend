@@ -14,9 +14,9 @@ interface BarcodeScannerInputProps {
 }
 
 /**
- * Visual target / focus landing pad for the scanner.
- * Actual scan detection is handled by useBarcodeScanner (global keydown).
- * This input still handles Enter as a fallback for manual entry.
+ * Visual focus landing pad for the scanner.
+ * Full barcode capture is done by useBarcodeScanner (global keydown).
+ * Manual Enter here is only a fallback for typing a full code by hand.
  */
 const BarcodeScannerInput = ({
   onScan,
@@ -37,16 +37,15 @@ const BarcodeScannerInput = ({
     if (!el) return;
     if (document.activeElement === el) return;
     el.focus({ preventScroll: true });
-    console.log("[barcode] focus scanner input");
   }, [disabled]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Manual typing fallback only — wedge scans are handled globally.
-    // Do NOT stopPropagation so the global listener still sees the keys.
+    // Do not stopPropagation — global listener owns wedge scans.
+    // Manual fallback only when a full code was typed slowly into this field.
     if (e.key === "Enter") {
       const code = (e.currentTarget.value || value).trim();
-      console.log("[barcode] input Enter fallback, value=", code);
       if (code.length >= 3) {
+        console.log("[barcode] input manual Enter fallback:", code);
         e.preventDefault();
         setValue("");
         if (inputRef.current) inputRef.current.value = "";
@@ -64,8 +63,8 @@ const BarcodeScannerInput = ({
   useEffect(() => {
     if (!keepFocus || disabled) return;
 
-    // Soft keep-focus: only reclaim focus when nothing useful is focused
-    // (avoids the blur↔focus loop that was eating scanner keystrokes).
+    // Soft reclaim only when focus is on the page chrome (not form fields).
+    // Long interval avoids fighting the scanner mid-burst.
     const interval = window.setInterval(() => {
       const active = document.activeElement as HTMLElement | null;
       if (!active || active === document.body) {
@@ -82,9 +81,8 @@ const BarcodeScannerInput = ({
       ) {
         return;
       }
-      // Focus is on a button/tab/etc. — reclaim for the next scan
       focusInput();
-    }, 800);
+    }, 1500);
 
     return () => window.clearInterval(interval);
   }, [keepFocus, disabled, focusInput]);
@@ -99,13 +97,14 @@ const BarcodeScannerInput = ({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
+        readOnly
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
         data-barcode-scanner="true"
         className={cn(
-          "pr-10 text-center font-mono text-lg tracking-wider",
+          "pr-10 text-center font-mono text-lg tracking-wider caret-transparent",
           className,
         )}
         aria-label="قارئ الباركود"

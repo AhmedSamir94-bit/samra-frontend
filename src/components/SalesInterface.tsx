@@ -160,7 +160,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
   useBarcodeScanner({
     onScan: handleBarcodeScan,
     enabled: isActive,
-    maxGapMs: 150,
+    idleResetMs: 600,
   });
 
   const updateQuantity = (id: string, newQuantity: number) => {

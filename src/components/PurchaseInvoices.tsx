@@ -178,7 +178,7 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
   useBarcodeScanner({
     onScan: handlePurchaseBarcodeScan,
     enabled: isActive && isFormDialogOpen,
-    maxGapMs: 150,
+    idleResetMs: 600,
   });
 
   const calculateTotal = () => calculatePurchaseItemsTotal(invoiceItems);
