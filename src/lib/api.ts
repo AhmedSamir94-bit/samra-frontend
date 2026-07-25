@@ -16,7 +16,11 @@ import {
   setTokens,
 } from "@/lib/auth-storage";
 
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? "https://samra-backend.vercel.app/api"
+    : "/api");
 
 class ApiError extends Error {
   constructor(message: string) {
