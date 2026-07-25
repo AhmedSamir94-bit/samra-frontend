@@ -118,7 +118,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="products" className="m-0">
-            <ProductManagement />
+            <ProductManagement isActive={activeTab === "products"} />
           </TabsContent>
 
           <TabsContent value="sales-invoices" className="m-0">
@@ -126,7 +126,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="invoices" className="m-0">
-            <PurchaseInvoices />
+            <PurchaseInvoices isActive={activeTab === "invoices"} />
           </TabsContent>
 
           <TabsContent value="reports" className="m-0">

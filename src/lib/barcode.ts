@@ -48,9 +48,16 @@ export function createPurchaseItemFromBarcode(barcode: string): PurchaseItem {
 }
 
 export async function lookupProductByBarcode(barcode: string): Promise<Product | null> {
+  const code = barcode.trim();
+  if (!code) return null;
+
+  console.log("[barcode] API lookup:", code);
   try {
-    return await api.getProductByBarcode(barcode);
-  } catch {
+    const product = await api.getProductByBarcode(code);
+    console.log("[barcode] API found:", product?.name, product?.id);
+    return product;
+  } catch (error) {
+    console.log("[barcode] API not found / error:", code, error);
     return null;
   }
 }
