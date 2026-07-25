@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Barcode } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { emitBarcodeScan } from "@/hooks/use-barcode-scanner";
 
 interface BarcodeScannerInputProps {
   onScan: (barcode: string) => void | Promise<void>;
@@ -10,10 +9,15 @@ interface BarcodeScannerInputProps {
   className?: string;
   disabled?: boolean;
   autoFocus?: boolean;
-  /** Refocus after blur unless focus moved to an element with data-scanner-ignore */
+  /** Soft-refocus when the page is idle (not while typing in other fields) */
   keepFocus?: boolean;
 }
 
+/**
+ * Visual target / focus landing pad for the scanner.
+ * Actual scan detection is handled by useBarcodeScanner (global keydown).
+ * This input still handles Enter as a fallback for manual entry.
+ */
 const BarcodeScannerInput = ({
   onScan,
   placeholder = "امسح الباركود بالقارئ...",
@@ -24,93 +28,65 @@ const BarcodeScannerInput = ({
 }: BarcodeScannerInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
-  const [isScanning, setIsScanning] = useState(false);
   const onScanRef = useRef(onScan);
   onScanRef.current = onScan;
 
   const focusInput = useCallback(() => {
-    if (!disabled) {
-      inputRef.current?.focus({ preventScroll: true });
-    }
+    if (disabled) return;
+    const el = inputRef.current;
+    if (!el) return;
+    if (document.activeElement === el) return;
+    el.focus({ preventScroll: true });
+    console.log("[barcode] focus scanner input");
   }, [disabled]);
 
-  const processScan = useCallback(
-    async (raw: string, source: string) => {
-      const barcode = raw.trim();
-      if (!barcode) {
-        console.log(`[barcode] empty scan ignored (${source})`);
-        return;
-      }
-
-      setIsScanning(true);
-      try {
-        emitBarcodeScan(barcode, onScanRef.current, source);
-      } finally {
-        setValue("");
-        if (inputRef.current) {
-          inputRef.current.value = "";
-        }
-        setIsScanning(false);
-        // Refocus after React paint so the next scan lands here
-        window.setTimeout(focusInput, 0);
-      }
-    },
-    [focusInput],
-  );
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    console.log(
-      "[barcode] input keydown:",
-      e.key,
-      "domValue:",
-      e.currentTarget.value,
-      "reactValue:",
-      value,
-    );
-
-    if (e.key === "Enter" || e.key === "Tab") {
-      e.preventDefault();
-      e.stopPropagation();
-      // Use DOM value — React state lags behind fast scanner keystrokes
-      const domValue = e.currentTarget.value;
-      void processScan(domValue || value, "scanner-input");
+    // Manual typing fallback only — wedge scans are handled globally.
+    // Do NOT stopPropagation so the global listener still sees the keys.
+    if (e.key === "Enter") {
+      const code = (e.currentTarget.value || value).trim();
+      console.log("[barcode] input Enter fallback, value=", code);
+      if (code.length >= 3) {
+        e.preventDefault();
+        setValue("");
+        if (inputRef.current) inputRef.current.value = "";
+        void onScanRef.current(code);
+      }
     }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const next = e.target.value;
-    setValue(next);
-    console.log("[barcode] input change:", next);
   };
 
   useEffect(() => {
-    if (autoFocus) {
-      console.log("[barcode] autofocus scanner input");
-      focusInput();
-    }
+    if (!autoFocus) return;
+    const t = window.setTimeout(focusInput, 50);
+    return () => window.clearTimeout(t);
   }, [autoFocus, focusInput]);
 
   useEffect(() => {
     if (!keepFocus || disabled) return;
 
-    const input = inputRef.current;
-    if (!input) return;
-
-    const handleBlur = () => {
-      window.setTimeout(() => {
-        const active = document.activeElement as HTMLElement | null;
-        if (active?.closest("[data-scanner-ignore]")) {
-          console.log("[barcode] blur kept — focus on scanner-ignore field");
-          return;
-        }
-        if (active === input) return;
-        console.log("[barcode] re-focusing scanner input after blur");
+    // Soft keep-focus: only reclaim focus when nothing useful is focused
+    // (avoids the blur↔focus loop that was eating scanner keystrokes).
+    const interval = window.setInterval(() => {
+      const active = document.activeElement as HTMLElement | null;
+      if (!active || active === document.body) {
         focusInput();
-      }, 80);
-    };
+        return;
+      }
+      if (active.closest("[data-barcode-scanner]")) return;
+      if (active.closest("[data-scanner-ignore]")) return;
+      if (
+        active.tagName === "INPUT" ||
+        active.tagName === "TEXTAREA" ||
+        active.tagName === "SELECT" ||
+        active.isContentEditable
+      ) {
+        return;
+      }
+      // Focus is on a button/tab/etc. — reclaim for the next scan
+      focusInput();
+    }, 800);
 
-    input.addEventListener("blur", handleBlur);
-    return () => input.removeEventListener("blur", handleBlur);
+    return () => window.clearInterval(interval);
   }, [keepFocus, disabled, focusInput]);
 
   return (
@@ -119,19 +95,17 @@ const BarcodeScannerInput = ({
       <Input
         ref={inputRef}
         value={value}
-        onChange={handleChange}
+        onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        disabled={disabled || isScanning}
+        disabled={disabled}
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
-        inputMode="none"
         data-barcode-scanner="true"
         className={cn(
           "pr-10 text-center font-mono text-lg tracking-wider",
-          isScanning && "opacity-70",
           className,
         )}
         aria-label="قارئ الباركود"

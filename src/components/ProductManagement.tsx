@@ -112,7 +112,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
   useBarcodeScanner({
     onScan: handleProductBarcodeScan,
     enabled: isActive && isDialogOpen,
-    maxGapMs: 120,
+    maxGapMs: 150,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
