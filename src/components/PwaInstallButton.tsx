@@ -19,21 +19,29 @@ type Platform = "ios" | "android" | "desktop";
 
 function detectPlatform(): Platform {
   const ua = navigator.userAgent || "";
+
+  // iPadOS 13+ reports as Mac — detect via touch points
   const isIos =
-    /iPad|iPhone|iPod/.test(ua) ||
+    /iPad|iPhone|iPod/i.test(ua) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
   if (isIos) return "ios";
   if (/Android/i.test(ua)) return "android";
   return "desktop";
 }
 
-/** True only when running as an installed home-screen app. */
 function isStandaloneDisplay() {
   const nav = navigator as Navigator & { standalone?: boolean };
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
     nav.standalone === true
   );
+}
+
+function platformTitle(platform: Platform) {
+  if (platform === "ios") return "خطوات التثبيت على آيفون / آيباد";
+  if (platform === "android") return "خطوات التثبيت على أندرويد";
+  return "خطوات التثبيت على الكمبيوتر";
 }
 
 function InstallSteps({ platform }: { platform: Platform }) {
@@ -49,15 +57,15 @@ function InstallSteps({ platform }: { platform: Platform }) {
           <span className="inline-flex items-center gap-1 font-semibold text-blue-700">
             المشاركة <Share className="w-3.5 h-3.5" />
           </span>{" "}
-          في أسفل الشاشة (أو أعلى في بعض الإصدارات)
+          في أسفل الشاشة
         </li>
         <li>
-          مرّر للأسفل واختر{" "}
+          اختر{" "}
           <span className="font-semibold text-gray-900">
             «إضافة إلى الشاشة الرئيسية»
           </span>
         </li>
-        <li>اضغط «إضافة» — سيظهر تطبيق سمرة على شاشتك</li>
+        <li>اضغط «إضافة» ليظهر تطبيق سمرة على شاشتك</li>
       </ol>
     );
   }
@@ -97,15 +105,12 @@ function InstallSteps({ platform }: { platform: Platform }) {
 }
 
 interface PwaInstallButtonProps {
-  /** `card` = full guide on login; `compact` = header button + dialog */
   variant?: "card" | "compact";
   className?: string;
 }
 
 /**
- * Always visible install CTA.
- * Android/Chrome can use the native prompt; iOS always shows Safari how-to
- * (Apple does not support beforeinstallprompt).
+ * Detects the device and shows only that platform's install instructions.
  */
 export function PwaInstallButton({
   variant = "card",
@@ -127,11 +132,9 @@ export function PwaInstallButton({
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
       setDeferred(event as BeforeInstallPromptEvent);
-      console.log("[pwa] beforeinstallprompt ready");
     };
 
     const onInstalled = () => {
-      console.log("[pwa] app installed");
       setInstalled(true);
       setDeferred(null);
       setDialogOpen(false);
@@ -149,10 +152,7 @@ export function PwaInstallButton({
     if (!deferred) return;
     await deferred.prompt();
     const choice = await deferred.userChoice;
-    console.log("[pwa] install choice:", choice.outcome);
-    if (choice.outcome === "accepted") {
-      setInstalled(true);
-    }
+    if (choice.outcome === "accepted") setInstalled(true);
     setDeferred(null);
   };
 
@@ -161,7 +161,6 @@ export function PwaInstallButton({
       await runNativeInstall();
       return;
     }
-    // iOS / browsers without native prompt → show instructions
     setDialogOpen(true);
   };
 
@@ -169,7 +168,9 @@ export function PwaInstallButton({
     ? "تثبيت الآن بنقرة واحدة"
     : platform === "ios"
       ? "كيفية التثبيت على آيفون"
-      : "كيفية تثبيت التطبيق";
+      : platform === "android"
+        ? "كيفية التثبيت على أندرويد"
+        : "كيفية تثبيت التطبيق";
 
   if (installed) {
     if (variant === "compact") return null;
@@ -187,52 +188,18 @@ export function PwaInstallButton({
     );
   }
 
-  const guideBody = (
-    <div className="space-y-4" dir="rtl">
-      <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-3 space-y-2">
-        <p className="text-sm font-semibold text-blue-900 flex items-center gap-2">
-          <Smartphone className="w-4 h-4" />
-          {platform === "ios"
-            ? "تثبيت على آيفون / آيباد (Safari)"
-            : platform === "android"
-              ? "تثبيت على أندرويد"
-              : "تثبيت على الكمبيوتر"}
-        </p>
-        <InstallSteps platform={platform} />
-      </div>
-
+  const platformGuide = (
+    <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-3 space-y-2" dir="rtl">
+      <p className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+        <Smartphone className="w-4 h-4" />
+        {platformTitle(platform)}
+      </p>
+      <InstallSteps platform={platform} />
       {platform === "ios" && (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-3 py-2">
-          ملاحظة: آبل لا تدعم زر التثبيت المباشر — يجب الإضافة يدوياً من Safari كما
-          بالأعلى.
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-3 py-2 mt-2">
+          ملاحظة: آبل لا تدعم زر التثبيت المباشر — أضف التطبيق يدوياً من Safari.
         </p>
       )}
-
-      <details className="text-sm text-gray-600">
-        <summary className="cursor-pointer text-blue-700 font-medium">
-          تعليمات الأجهزة الأخرى
-        </summary>
-        <div className="mt-3 space-y-4">
-          {platform !== "android" && (
-            <div>
-              <p className="font-semibold text-gray-800 mb-2">أندرويد (Chrome)</p>
-              <InstallSteps platform="android" />
-            </div>
-          )}
-          {platform !== "ios" && (
-            <div>
-              <p className="font-semibold text-gray-800 mb-2">آيفون (Safari)</p>
-              <InstallSteps platform="ios" />
-            </div>
-          )}
-          {platform !== "desktop" && (
-            <div>
-              <p className="font-semibold text-gray-800 mb-2">الكمبيوتر</p>
-              <InstallSteps platform="desktop" />
-            </div>
-          )}
-        </div>
-      </details>
     </div>
   );
 
@@ -242,10 +209,10 @@ export function PwaInstallButton({
         <DialogHeader className="text-right space-y-1">
           <DialogTitle>تثبيت تطبيق سمرة</DialogTitle>
           <DialogDescription>
-            ثبّت التطبيق على جهازك للوصول السريع من الشاشة الرئيسية
+            تعليمات التثبيت لجهازك الحالي فقط
           </DialogDescription>
         </DialogHeader>
-        {guideBody}
+        {platformGuide}
       </DialogContent>
     </Dialog>
   );
@@ -261,7 +228,11 @@ export function PwaInstallButton({
           onClick={handleInstallClick}
         >
           <Download className="w-4 h-4" />
-          تثبيت التطبيق
+          {platform === "ios"
+            ? "تثبيت (آيفون)"
+            : platform === "android"
+              ? "تثبيت (أندرويد)"
+              : "تثبيت التطبيق"}
         </Button>
         {instructionsDialog}
       </>
@@ -277,16 +248,19 @@ export function PwaInstallButton({
       dir="rtl"
     >
       <div>
-        <p className="font-semibold text-blue-900 flex items-center gap-2 justify-start">
+        <p className="font-semibold text-blue-900 flex items-center gap-2">
           <Download className="w-4 h-4" />
           ثبّت التطبيق على جهازك
         </p>
         <p className="text-xs text-gray-500 mt-1">
-          استخدم سمرة كتطبيق من الشاشة الرئيسية — أسرع وأسهل للكاشير
+          {platform === "ios"
+            ? "تم اكتشاف جهاز آيفون / آيباد"
+            : platform === "android"
+              ? "تم اكتشاف جهاز أندرويد"
+              : "تم اكتشاف جهاز كمبيوتر"}
         </p>
       </div>
 
-      {/* Always visible — critical for iOS where native prompt never exists */}
       <Button
         type="button"
         className="w-full gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
@@ -300,18 +274,8 @@ export function PwaInstallButton({
         {ctaLabel}
       </Button>
 
-      {/* Keep iOS steps visible on the login card without requiring a tap */}
-      {platform === "ios" && (
-        <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-3 space-y-2">
-          <p className="text-sm font-semibold text-blue-900 flex items-center gap-2">
-            <Smartphone className="w-4 h-4" />
-            خطوات سريعة لآيفون
-          </p>
-          <InstallSteps platform="ios" />
-        </div>
-      )}
-
-      {platform !== "ios" && !deferred && guideBody}
+      {/* Only the matching platform instructions */}
+      {platformGuide}
 
       {instructionsDialog}
     </div>
