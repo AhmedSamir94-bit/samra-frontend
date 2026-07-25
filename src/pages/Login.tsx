@@ -106,9 +106,11 @@ export default function Login() {
                 "دخول"
               )}
             </Button>
-
-            <PwaInstallButton />
           </form>
+
+          <div className="mt-5">
+            <PwaInstallButton variant="card" />
+          </div>
         </CardContent>
       </Card>
     </div>

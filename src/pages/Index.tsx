@@ -20,6 +20,7 @@ import PurchaseInvoices from "@/components/PurchaseInvoices";
 import ReportsSection from "@/components/ReportsSection";
 import SalesInvoices from "@/components/SalesInvoices";
 import { useAuth } from "@/contexts/AuthContext";
+import { PwaInstallButton } from "@/components/PwaInstallButton";
 import { api } from "@/lib/api";
 
 const navTabs: {
@@ -88,6 +89,7 @@ const Index = () => {
               <Badge variant="outline" className="text-blue-600 border-blue-200">
                 المتجر الرئيسي
               </Badge>
+              <PwaInstallButton variant="compact" />
               <Button variant="outline" size="sm" onClick={() => logout()} className="gap-1">
                 <LogOut className="w-4 h-4" />
                 خروج
