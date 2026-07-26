@@ -15,6 +15,7 @@ import { api } from "@/lib/api";
 import { lookupProductByBarcode } from "@/lib/barcode";
 import type { Product, SaleItem } from "@/types";
 import BarcodeScannerInput from "@/components/BarcodeScannerInput";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 interface SalesInterfaceProps {
   isActive?: boolean;
@@ -25,6 +26,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
   const cartRef = useRef(cart);
   cartRef.current = cart;
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleteCartItemId, setDeleteCartItemId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -321,7 +323,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
                           <Button
                             size="sm"
                             variant="destructive"
-                            onClick={() => removeFromCart(item.id)}
+                            onClick={() => setDeleteCartItemId(item.id)}
                           >
                             <Trash2 className="w-3 h-3" />
                           </Button>
@@ -362,6 +364,19 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
           </Card>
         </div>
       </div>
+
+      <ConfirmDeleteDialog
+        open={!!deleteCartItemId}
+        onOpenChange={(open) => {
+          if (!open) setDeleteCartItemId(null);
+        }}
+        onConfirm={() => {
+          if (deleteCartItemId) {
+            removeFromCart(deleteCartItemId);
+          }
+        }}
+        description="سيتم إزالة هذا المنتج من سلة المبيعات."
+      />
     </div>
   );
 };

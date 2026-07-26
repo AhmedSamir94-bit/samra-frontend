@@ -21,6 +21,7 @@ import {
 } from "@/lib/barcode";
 import type { PurchaseInvoice, PurchaseItem } from "@/types";
 import BarcodeScannerInput from "@/components/BarcodeScannerInput";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 const emptyItem = (): PurchaseItem => ({
   productName: "",
@@ -48,6 +49,7 @@ const initialInvoiceData = () => ({
 const PurchaseInvoices = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<PurchaseInvoice | null>(null);
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
+  const [deleteItemIndex, setDeleteItemIndex] = useState<number | null>(null);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<PurchaseInvoice | null>(null);
   const [invoiceData, setInvoiceData] = useState(initialInvoiceData);
@@ -405,7 +407,7 @@ const PurchaseInvoices = () => {
                                 type="button"
                                 variant="destructive"
                                 size="sm"
-                                onClick={() => removeInvoiceItem(index)}
+                                onClick={() => setDeleteItemIndex(index)}
                                 disabled={invoiceItems.length === 1}
                               >
                                 حذف
@@ -625,6 +627,19 @@ const PurchaseInvoices = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteItemIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteItemIndex(null);
+        }}
+        onConfirm={() => {
+          if (deleteItemIndex !== null) {
+            removeInvoiceItem(deleteItemIndex);
+          }
+        }}
+        description="سيتم إزالة هذا الصنف من فاتورة الشراء."
+      />
     </div>
   );
 };

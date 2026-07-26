@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Edit, Trash2, Tag, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Category } from "@/types";
+import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
 interface CategoryManagementProps {
   categories: Category[];
@@ -25,6 +26,7 @@ const CategoryManagement = ({
   isSubmitting = false,
 }: CategoryManagementProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -242,7 +244,7 @@ const CategoryManagement = ({
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => handleDelete(category.id)}
+                  onClick={() => setDeleteCategoryId(category.id)}
                   className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                 >
                   <Trash2 className="w-3 h-3" />
@@ -259,6 +261,20 @@ const CategoryManagement = ({
           </div>
         )}
       </CardContent>
+
+      <ConfirmDeleteDialog
+        open={!!deleteCategoryId}
+        onOpenChange={(open) => {
+          if (!open) setDeleteCategoryId(null);
+        }}
+        onConfirm={() => {
+          if (deleteCategoryId) {
+            void handleDelete(deleteCategoryId);
+          }
+        }}
+        description="سيتم حذف الفئة نهائياً ولا يمكن التراجع عن هذا الإجراء."
+        isLoading={isSubmitting}
+      />
     </Card>
   );
 };

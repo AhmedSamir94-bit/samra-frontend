@@ -16,10 +16,12 @@ import { lookupProductByBarcode } from "@/lib/barcode";
 import type { Product } from "@/types";
 import CategoryManagement from "./CategoryManagement";
 import BarcodeScannerInput from "./BarcodeScannerInput";
+import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
 const ProductManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -392,7 +394,7 @@ const ProductManagement = () => {
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleDelete(product.id)}
+                      onClick={() => setDeleteProductId(product.id)}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -412,6 +414,20 @@ const ProductManagement = () => {
           )}
         </>
       )}
+
+      <ConfirmDeleteDialog
+        open={!!deleteProductId}
+        onOpenChange={(open) => {
+          if (!open) setDeleteProductId(null);
+        }}
+        onConfirm={() => {
+          if (deleteProductId) {
+            void handleDelete(deleteProductId);
+          }
+        }}
+        description="سيتم حذف المنتج نهائياً ولا يمكن التراجع عن هذا الإجراء."
+        isLoading={deleteProductMutation.isPending}
+      />
     </div>
   );
 };
