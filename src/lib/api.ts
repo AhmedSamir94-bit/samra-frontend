@@ -1,6 +1,10 @@
 import type {
   AuthResponse,
   Category,
+  Expense,
+  ExpensePaymentMethod,
+  ExpenseType,
+  ExpenseTypeOption,
   Product,
   PurchaseInvoice,
   PurchaseItem,
@@ -300,6 +304,42 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  getExpenseTypes: () => request<ExpenseTypeOption[]>("/expenses/types"),
+  getExpenses: (from?: string, to?: string, type?: string) =>
+    request<Expense[]>(`/expenses${buildQuery({ from, to, type })}`),
+  getExpense: (id: string) => request<Expense>(`/expenses/${id}`),
+  getNextExpenseNumber: () =>
+    request<{ expenseNumber: string }>("/expenses/next-number"),
+  createExpense: (data: {
+    type: ExpenseType;
+    description: string;
+    amount: number;
+    date?: string;
+    paymentMethod?: ExpensePaymentMethod;
+    notes?: string;
+  }) =>
+    request<Expense>("/expenses", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateExpense: (
+    id: string,
+    data: {
+      type?: ExpenseType;
+      description?: string;
+      amount?: number;
+      date?: string;
+      paymentMethod?: ExpensePaymentMethod;
+      notes?: string;
+    },
+  ) =>
+    request<Expense>(`/expenses/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deleteExpense: (id: string) =>
+    request<void>(`/expenses/${id}`, { method: "DELETE" }),
 
   getReport: (type: ReportType, from?: string, to?: string) =>
     request<ReportData>(`/reports/${type}${buildQuery({ from, to })}`),

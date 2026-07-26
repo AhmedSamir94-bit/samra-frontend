@@ -54,21 +54,21 @@ const SalesInvoices = () => {
   };
   return (
     <div className="space-y-6">
-      <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
+      <Card className="app-surface-muted" dir="rtl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-800">
+          <CardTitle className="flex items-center gap-2 app-heading">
             <FileText className="w-6 h-6" />
             فواتير المبيعات
           </CardTitle>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm app-muted">
             إجمالي الفواتير: {salesInvoices.length} فاتورة
           </p>
         </CardHeader>
       </Card>
 
-      <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
+      <Card className="app-surface-muted" dir="rtl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-800">
+          <CardTitle className="flex items-center gap-2 app-heading">
             <Receipt className="w-5 h-5" />
             قائمة الفواتير ({salesInvoices.length})
           </CardTitle>
@@ -99,11 +99,11 @@ const SalesInvoices = () => {
                           <Badge variant="outline" className="text-blue-600 border-blue-300">
                             {invoice.invoiceNumber}
                           </Badge>
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm app-muted">
                             {invoice.items.length} منتج
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-4 text-sm app-muted">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
                             {invoice.date} - {invoice.time}
@@ -144,19 +144,19 @@ const SalesInvoices = () => {
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-blue-50 rounded-lg">
                 <div>
-                  <span className="text-sm text-gray-600">رقم الفاتورة</span>
+                  <span className="text-sm app-muted">رقم الفاتورة</span>
                   <p className="font-semibold">{selectedInvoice.invoiceNumber}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">التاريخ</span>
+                  <span className="text-sm app-muted">التاريخ</span>
                   <p className="font-semibold">{selectedInvoice.date}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">الوقت</span>
+                  <span className="text-sm app-muted">الوقت</span>
                   <p className="font-semibold">{selectedInvoice.time}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">البائع</span>
+                  <span className="text-sm app-muted">البائع</span>
                   <p className="font-semibold">{selectedInvoice.cashier}</p>
                 </div>
               </div>

@@ -193,10 +193,10 @@ const UsersManagement = () => {
 
   return (
     <div className="space-y-4" dir="rtl">
-      <Card className="bg-white/60 backdrop-blur-sm border-blue-100">
+      <Card className="app-surface-muted">
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="flex items-center gap-2 text-blue-800">
+            <CardTitle className="flex items-center gap-2 app-heading">
               <Users className="w-5 h-5" />
               إدارة المستخدمين
             </CardTitle>
@@ -322,7 +322,7 @@ const UsersManagement = () => {
               <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
             </div>
           ) : (
-            <div className="rounded-md border border-blue-100 overflow-x-auto">
+            <div className="rounded-md border border-blue-100 dark:border-slate-700 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -344,7 +344,7 @@ const UsersManagement = () => {
                           variant="outline"
                           className={
                             user.role === "super_admin"
-                              ? "border-purple-200 text-purple-700 bg-purple-50"
+                              ? "border-purple-200 text-purple-700 dark:text-purple-400 bg-purple-50"
                               : "border-blue-200 text-blue-700 bg-blue-50"
                           }
                         >

@@ -63,30 +63,30 @@ const ReportsSection = () => {
 
         return (
           <div className="space-y-6">
-            <Card className="bg-white/80 backdrop-blur-sm border-blue-100" dir="rtl">
+            <Card className="app-surface" dir="rtl">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-800">
+                <CardTitle className="flex items-center gap-2 app-heading">
                   <TrendingUp className="w-5 h-5" />
                   تقرير المبيعات
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                  <div className="rounded-lg bg-green-50 border border-green-100 p-4">
-                    <p className="text-sm text-gray-600">إجمالي الإيرادات</p>
-                    <p className="text-2xl font-bold text-green-700">
+                  <div className="rounded-lg bg-green-50 border border-green-100 dark:bg-green-950/40 dark:border-green-900 p-4">
+                    <p className="text-sm app-muted">إجمالي الإيرادات</p>
+                    <p className="text-2xl font-bold text-green-700 dark:text-green-400">
                       {formatCurrency(totals.revenue)}
                     </p>
                   </div>
-                  <div className="rounded-lg bg-orange-50 border border-orange-100 p-4">
-                    <p className="text-sm text-gray-600">التكلفة</p>
-                    <p className="text-2xl font-bold text-orange-700">
+                  <div className="rounded-lg bg-orange-50 border border-orange-100 dark:bg-orange-950/40 dark:border-orange-900 p-4">
+                    <p className="text-sm app-muted">التكلفة</p>
+                    <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">
                       {formatCurrency(totals.cogs)}
                     </p>
                   </div>
-                  <div className="rounded-lg bg-purple-50 border border-purple-100 p-4">
-                    <p className="text-sm text-gray-600">صافي الربح</p>
-                    <p className={`text-2xl font-bold ${totals.netProfit >= 0 ? "text-purple-700" : "text-red-600"}`}>
+                  <div className="rounded-lg bg-purple-50 border border-purple-100 dark:bg-purple-950/40 dark:border-purple-900 p-4">
+                    <p className="text-sm app-muted">صافي الربح</p>
+                    <p className={`text-2xl font-bold ${totals.netProfit >= 0 ? "text-purple-700 dark:text-purple-400" : "text-red-600"}`}>
                       {formatCurrency(totals.netProfit)}
                     </p>
                   </div>
@@ -153,9 +153,9 @@ const ReportsSection = () => {
 
       case "purchases":
         return (
-          <Card className="bg-white/80 backdrop-blur-sm border-blue-100">
+          <Card className="app-surface">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 app-heading">
                 <ShoppingCart className="w-5 h-5" />
                 تقرير المشتريات
               </CardTitle>
@@ -200,26 +200,26 @@ const ReportsSection = () => {
         );
 
         return (
-          <Card className="bg-white/80 backdrop-blur-sm border-blue-100" dir="rtl">
+          <Card className="app-surface" dir="rtl">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 app-heading">
                 <DollarSign className="w-5 h-5" />
                 تقرير الأرباح
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="rounded-lg bg-green-50 border border-green-100 p-4">
-                  <p className="text-sm text-gray-600">إجمالي الإيرادات</p>
-                  <p className="text-2xl font-bold text-green-700">{formatCurrency(totals.revenue)}</p>
+                <div className="rounded-lg bg-green-50 border border-green-100 dark:bg-green-950/40 dark:border-green-900 p-4">
+                  <p className="text-sm app-muted">إجمالي الإيرادات</p>
+                  <p className="text-2xl font-bold text-green-700 dark:text-green-400">{formatCurrency(totals.revenue)}</p>
                 </div>
-                <div className="rounded-lg bg-orange-50 border border-orange-100 p-4">
-                  <p className="text-sm text-gray-600">التكلفة</p>
-                  <p className="text-2xl font-bold text-orange-700">{formatCurrency(totals.cogs)}</p>
+                <div className="rounded-lg bg-orange-50 border border-orange-100 dark:bg-orange-950/40 dark:border-orange-900 p-4">
+                  <p className="text-sm app-muted">التكلفة</p>
+                  <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">{formatCurrency(totals.cogs)}</p>
                 </div>
-                <div className="rounded-lg bg-purple-50 border border-purple-100 p-4">
-                  <p className="text-sm text-gray-600">صافي الربح</p>
-                  <p className={`text-2xl font-bold ${totals.netProfit >= 0 ? "text-purple-700" : "text-red-600"}`}>
+                <div className="rounded-lg bg-purple-50 border border-purple-100 dark:bg-purple-950/40 dark:border-purple-900 p-4">
+                  <p className="text-sm app-muted">صافي الربح</p>
+                  <p className={`text-2xl font-bold ${totals.netProfit >= 0 ? "text-purple-700 dark:text-purple-400" : "text-red-600"}`}>
                     {formatCurrency(totals.netProfit)}
                   </p>
                 </div>
@@ -255,9 +255,9 @@ const ReportsSection = () => {
 
       case "top-selling":
         return (
-          <Card className="bg-white/80 backdrop-blur-sm border-blue-100">
+          <Card className="app-surface">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 app-heading">
                 <TrendingUp className="w-5 h-5" />
                 المنتجات الأكثر مبيعاً
               </CardTitle>
@@ -289,9 +289,9 @@ const ReportsSection = () => {
 
       case "purchased-items":
         return (
-          <Card className="bg-white/80 backdrop-blur-sm border-blue-100">
+          <Card className="app-surface">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 app-heading">
                 <Package className="w-5 h-5" />
                 المنتجات التي تم شراؤها
               </CardTitle>
@@ -323,9 +323,9 @@ const ReportsSection = () => {
 
       case "sold-items":
         return (
-          <Card className="bg-white/80 backdrop-blur-sm border-blue-100">
+          <Card className="app-surface">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 app-heading">
                 <Package className="w-5 h-5" />
                 المنتجات التي تم بيعها
               </CardTitle>
@@ -365,12 +365,12 @@ const ReportsSection = () => {
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold text-blue-800">التقارير والإحصائيات</h2>
+        <h2 className="text-2xl font-bold app-heading">التقارير والإحصائيات</h2>
       </div>
 
-      <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
+      <Card className="app-surface-muted" dir="rtl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-800">
+          <CardTitle className="flex items-center gap-2 app-heading">
             <FileText className="w-6 h-6" />
             إعدادات التقرير
           </CardTitle>

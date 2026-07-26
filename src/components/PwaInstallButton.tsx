@@ -189,7 +189,7 @@ export function PwaInstallButton({
   }
 
   const platformGuide = (
-    <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-3 space-y-2" dir="rtl">
+    <div className="rounded-lg border border-blue-100 dark:border-slate-700 bg-blue-50/60 dark:bg-slate-800/60 p-3 space-y-2" dir="rtl">
       <p className="text-sm font-semibold text-blue-900 flex items-center gap-2">
         <Smartphone className="w-4 h-4" />
         {platformTitle(platform)}
@@ -242,7 +242,7 @@ export function PwaInstallButton({
   return (
     <div
       className={cn(
-        "rounded-lg border border-blue-100 bg-white/80 p-3 space-y-3 text-right",
+        "rounded-lg border border-blue-100 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 p-3 space-y-3 text-right",
         className,
       )}
       dir="rtl"

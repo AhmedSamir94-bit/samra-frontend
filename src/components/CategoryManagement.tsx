@@ -119,10 +119,10 @@ const CategoryManagement = ({
   };
 
   return (
-    <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
+    <Card className="app-surface-muted" dir="rtl">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="flex items-center gap-2 text-blue-800">
+          <CardTitle className="flex items-center gap-2 app-heading">
             <Tag className="w-5 h-5" />
             إدارة الفئات
           </CardTitle>
@@ -224,7 +224,7 @@ const CategoryManagement = ({
           {categories.map((category) => (
             <div
               key={category.id}
-              className="p-3 bg-white rounded-lg border border-blue-100 flex items-center justify-between group hover:shadow-md transition-all duration-200"
+              className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-blue-100 dark:border-slate-700 flex items-center justify-between group hover:shadow-md transition-all duration-200"
             >
               <div className="flex items-center gap-2">
                 <div
@@ -257,7 +257,7 @@ const CategoryManagement = ({
                     event.stopPropagation();
                     requestDelete(category.id);
                   }}
-                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700 dark:text-red-400"
                 >
                   <Trash2 className="w-3 h-3" />
                 </Button>

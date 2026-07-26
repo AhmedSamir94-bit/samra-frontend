@@ -7,8 +7,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <p className="text-gray-600">جاري التحقق من الجلسة...</p>
+      <div className="app-page flex items-center justify-center">
+        <p className="app-muted">جاري التحقق من الجلسة...</p>
       </div>
     );
   }

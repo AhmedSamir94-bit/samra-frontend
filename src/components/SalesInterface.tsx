@@ -293,13 +293,13 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" dir="rtl">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="bg-white/60 backdrop-blur-sm border-blue-100">
+          <Card className="app-surface-muted">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 app-heading">
                 <Barcode className="w-5 h-5" />
                 قارئ الباركود
               </CardTitle>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm app-muted">
                 وجّه القارئ نحو هذا الحقل وامسح الباركود — كل مسح يضيف منتجاً للسلة
               </p>
             </CardHeader>
@@ -312,9 +312,9 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
             </CardContent>
           </Card>
 
-          <Card className="bg-white/60 backdrop-blur-sm border-blue-100">
+          <Card className="app-surface-muted">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 app-heading">
                 <Search className="w-5 h-5" />
                 المنتجات المتاحة
               </CardTitle>
@@ -336,7 +336,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
                   {products.map((product) => (
                     <Card
                       key={product.id}
-                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-blue-100 hover:border-blue-300"
+                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600"
                       onClick={() => addToCart(product)}
                     >
                       <CardContent className="p-4 text-center">
@@ -364,9 +364,9 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
         </div>
 
         <div className="space-y-4" data-scanner-ignore>
-          <Card className="bg-white/80 backdrop-blur-sm border-blue-100 sticky top-24">
+          <Card className="app-surface sticky top-24">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 app-heading">
                 <Receipt className="w-5 h-5" />
                 سلة المشتريات
               </CardTitle>

@@ -210,7 +210,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" dir="rtl">
-        <h2 className="text-2xl font-bold text-blue-800">إدارة المنتجات</h2>
+        <h2 className="text-2xl font-bold app-heading">إدارة المنتجات</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button 
@@ -373,7 +373,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
         }
       />
 
-      <Card className="bg-white/60 backdrop-blur-sm border-blue-100">
+      <Card className="app-surface-muted">
         <CardContent className="pt-6">
           <div className="relative">
             <Search className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -395,7 +395,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" dir="rtl">
             {products.map((product) => (
-              <Card key={product.id} className="bg-white/80 backdrop-blur-sm border-blue-100 hover:shadow-lg transition-all duration-200">
+              <Card key={product.id} className="app-surface hover:shadow-lg transition-all duration-200">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg text-gray-800">{product.name}</CardTitle>
@@ -412,24 +412,24 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">{unitPriceLabel(product.unitType)}:</span>
+                    <span className="text-sm app-muted">{unitPriceLabel(product.unitType)}:</span>
                     <span className="font-bold text-blue-600">{formatCurrency(product.price)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">المخزون:</span>
+                    <span className="text-sm app-muted">المخزون:</span>
                     <Badge variant={product.stock > 10 ? "default" : "destructive"}>
                       {formatQuantity(product.stock, product.unitType)}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">الوحدة:</span>
+                    <span className="text-sm app-muted">الوحدة:</span>
                     <Badge variant="outline">
                       {product.unitType === "kg" ? "بالوزن" : "بالقطعة"}
                     </Badge>
                   </div>
                   {product.barcode && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">الباركود:</span>
+                      <span className="text-sm app-muted">الباركود:</span>
                       <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
                         {product.barcode}
                       </span>
@@ -459,10 +459,10 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
           </div>
 
           {products.length === 0 && (
-            <Card className="bg-white/60 backdrop-blur-sm border-blue-100">
+            <Card className="app-surface-muted">
               <CardContent className="text-center py-12">
                 <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">لا توجد منتجات متاحة</p>
+                <p className="app-muted">لا توجد منتجات متاحة</p>
               </CardContent>
             </Card>
           )}

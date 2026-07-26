@@ -93,34 +93,60 @@ export interface ProfitsReportRow {
   date: string;
   revenue: number;
   cogs: number;
+  expenses: number;
   netProfit: number;
   purchases: number;
 }
 
-export interface TopSellingRow {
-  name: string;
-  quantity: number;
-  revenue: number;
-  unitType?: ProductUnit;
+export type ExpenseType =
+  | "rent"
+  | "electricity"
+  | "water"
+  | "gas"
+  | "salaries"
+  | "transportation"
+  | "maintenance"
+  | "marketing"
+  | "packaging"
+  | "cleaning"
+  | "internet"
+  | "phone"
+  | "supplies"
+  | "taxes"
+  | "insurance"
+  | "other";
+
+export type ExpensePaymentMethod = "cash" | "card" | "transfer";
+
+export interface ExpenseTypeOption {
+  type: ExpenseType;
+  label: string;
 }
 
-export interface PurchasedItemsRow {
-  name: string;
-  quantity: number;
-  cost: number;
-  unitType?: ProductUnit;
+export interface Expense {
+  id: string;
+  expenseNumber: string;
+  type: ExpenseType;
+  description: string;
+  amount: number;
+  date: string;
+  time: string;
+  paymentMethod: ExpensePaymentMethod;
+  notes?: string;
+  createdBy?: string;
 }
 
-export interface SoldItemsRow {
-  name: string;
-  quantity: number;
-  remaining: number;
-  unitType?: ProductUnit;
+export interface ExpensesReportData {
+  total: number;
+  count: number;
+  byDate: { date: string; count: number; total: number }[];
+  byType: { type: string; label: string; count: number; total: number }[];
 }
 
 export type ReportType =
   | "sales"
   | "purchases"
+  | "expenses"
   | "profits"
   | "top-selling"
   | "purchased-items"
@@ -132,4 +158,5 @@ export type ReportData =
   | ProfitsReportRow[]
   | TopSellingRow[]
   | PurchasedItemsRow[]
-  | SoldItemsRow[];
+  | SoldItemsRow[]
+  | ExpensesReportData;

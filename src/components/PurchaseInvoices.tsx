@@ -292,15 +292,15 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
+      <Card className="app-surface-muted" dir="rtl">
         <CardHeader>
           <div className="flex justify-between items-center" dir="rtl">
             <div>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 app-heading">
                 <FileText className="w-6 h-6" />
                 فواتير الشراء
               </CardTitle>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm app-muted mt-1">
                 إجمالي الفواتير: {invoices.length} فاتورة
               </p>
             </div>
@@ -368,11 +368,11 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
                   </div>
 
                   <Card className="p-4 bg-blue-50 border-blue-200">
-                    <div className="flex items-center gap-2 mb-3 text-blue-800">
+                    <div className="flex items-center gap-2 mb-3 app-heading">
                       <Barcode className="w-5 h-5" />
                       <Label className="text-base font-semibold">مسح الباركود لإضافة بنود</Label>
                     </div>
-                    <p className="text-sm text-gray-600 mb-3">
+                    <p className="text-sm app-muted mb-3">
                       امسح باركود المنتج — إذا كان مسجلاً يُملأ تلقائياً، وإلا أدخل بيانات المنتج الجديد
                     </p>
                     <BarcodeScannerInput
@@ -538,9 +538,9 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
         </CardHeader>
       </Card>
 
-      <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
+      <Card className="app-surface-muted" dir="rtl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-800">
+          <CardTitle className="flex items-center gap-2 app-heading">
             <Receipt className="w-5 h-5" />
             قائمة فواتير الشراء ({invoices.length})
           </CardTitle>
@@ -571,11 +571,11 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
                           <Badge variant="outline" className="text-blue-600 border-blue-300">
                             {invoice.invoiceNumber}
                           </Badge>
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm app-muted">
                             {invoice.items.length} منتج
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-4 text-sm app-muted">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
                             {invoice.date} - {invoice.time}
@@ -629,19 +629,19 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
             <div className="space-y-6" dir="rtl">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-blue-50 rounded-lg">
                 <div>
-                  <span className="text-sm text-gray-600">رقم الفاتورة</span>
+                  <span className="text-sm app-muted">رقم الفاتورة</span>
                   <p className="font-semibold">{selectedInvoice.invoiceNumber}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">التاريخ</span>
+                  <span className="text-sm app-muted">التاريخ</span>
                   <p className="font-semibold">{selectedInvoice.date}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">الوقت</span>
+                  <span className="text-sm app-muted">الوقت</span>
                   <p className="font-semibold">{selectedInvoice.time}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">المورد</span>
+                  <span className="text-sm app-muted">المورد</span>
                   <p className="font-semibold">{selectedInvoice.supplier}</p>
                 </div>
               </div>
@@ -664,7 +664,7 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
                     {selectedInvoice.items.map((item, index) => (
                       <TableRow key={index}>
                         <TableCell className="font-medium">{item.productName}</TableCell>
-                        <TableCell className="text-sm text-gray-600">{item.barcode}</TableCell>
+                        <TableCell className="text-sm app-muted">{item.barcode}</TableCell>
                         <TableCell>
                           {item.category && (
                             <Badge 

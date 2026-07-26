@@ -22,6 +22,7 @@ import SalesInvoices from "@/components/SalesInvoices";
 import UsersManagement from "@/components/UsersManagement";
 import { useAuth } from "@/contexts/AuthContext";
 import { PwaInstallButton } from "@/components/PwaInstallButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { api } from "@/lib/api";
 import type { UserRole } from "@/types";
 
@@ -120,8 +121,8 @@ const Index = () => {
             : "sm:grid-cols-6";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50" dir="rtl">
-      <div className="bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-50">
+    <div className="app-page" dir="rtl">
+      <div className="app-surface border-b sticky top-0 z-50">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -129,10 +130,10 @@ const Index = () => {
                 <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent truncate">
+                <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent truncate">
                   نظام نقطة البيع
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">
+                <p className="text-xs sm:text-sm app-muted truncate">
                   إدارة ذكية للمبيعات والمخزون
                 </p>
               </div>
@@ -142,16 +143,16 @@ const Index = () => {
                 variant="secondary"
                 className={
                   isBackendConnected
-                    ? "bg-green-100 text-green-800 border-green-200"
+                    ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800"
                     : isBackendDisconnected
-                    ? "bg-red-100 text-red-800 border-red-200"
-                    : "bg-yellow-100 text-yellow-800 border-yellow-200"
+                    ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800"
+                    : "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-300 dark:border-yellow-800"
                 }
               >
                 {isBackendConnected ? "متصل" : isBackendDisconnected ? "غير متصل" : "جاري الاتصال..."}
               </Badge>
               {user && (
-                <Badge variant="outline" className="text-gray-700 border-gray-200">
+                <Badge variant="outline" className="text-gray-700 border-gray-200 dark:text-slate-300 dark:border-slate-600">
                   {user.name}
                 </Badge>
               )}
@@ -160,16 +161,17 @@ const Index = () => {
                   variant="outline"
                   className={
                     role === "super_admin"
-                      ? "text-purple-700 border-purple-200 bg-purple-50"
-                      : "text-blue-700 border-blue-200 bg-blue-50"
+                      ? "text-purple-700 border-purple-200 bg-purple-50 dark:text-purple-300 dark:border-purple-800 dark:bg-purple-950/50"
+                      : "text-blue-700 border-blue-200 bg-blue-50 dark:text-blue-300 dark:border-blue-800 dark:bg-blue-950/50"
                   }
                 >
                   {roleLabels[role]}
                 </Badge>
               )}
-              <Badge variant="outline" className="text-blue-600 border-blue-200">
+              <Badge variant="outline" className="text-blue-600 border-blue-200 dark:text-blue-400 dark:border-blue-800">
                 المتجر الرئيسي
               </Badge>
+              <ThemeToggle />
               <PwaInstallButton variant="compact" />
               <Button variant="outline" size="sm" onClick={() => logout()} className="gap-1">
                 <LogOut className="w-4 h-4" />
@@ -184,7 +186,7 @@ const Index = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
           <div className="-mx-3 sm:mx-0 px-3 sm:px-0 overflow-x-auto">
             <TabsList
-              className={`inline-flex w-max min-w-full sm:grid sm:w-full ${tabsColsClass} h-auto min-h-[4.5rem] sm:h-16 bg-white/60 backdrop-blur-sm border border-blue-100 p-1 gap-1`}
+              className={`inline-flex w-max min-w-full sm:grid sm:w-full ${tabsColsClass} h-auto min-h-[4.5rem] sm:h-16 app-surface-muted border p-1 gap-1`}
               dir="rtl"
             >
               {visibleTabs.map(({ value, label, shortLabel, icon: Icon }) => (
