@@ -13,6 +13,7 @@ import { formatCurrency } from "@/lib/currency";
 import { formatQuantity } from "@/lib/units";
 import { api } from "@/lib/api";
 import type {
+  ExpensesReportData,
   ProfitsReportRow,
   PurchasedItemsRow,
   PurchasesReportRow,
@@ -28,7 +29,7 @@ const ReportsSection = () => {
   const [dateTo, setDateTo] = useState("");
   const [shouldFetch, setShouldFetch] = useState(true);
 
-  const { data: reportData = [], isLoading, isFetching, refetch } = useQuery({
+  const { data: reportData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["reports", selectedReport, dateFrom, dateTo],
     queryFn: () => api.getReport(selectedReport, dateFrom || undefined, dateTo || undefined),
     enabled: shouldFetch,
@@ -48,9 +49,11 @@ const ReportsSection = () => {
       );
     }
 
+    const rowsOrEmpty = Array.isArray(reportData) ? reportData : [];
+
     switch (selectedReport) {
       case "sales": {
-        const rows = reportData as SalesReportRow[];
+        const rows = rowsOrEmpty as SalesReportRow[];
         const totals = rows.reduce(
           (acc, row) => ({
             quantitySold: acc.quantitySold + Number(row.quantitySold ?? 0),
@@ -171,7 +174,7 @@ const ReportsSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(reportData as PurchasesReportRow[]).map((item, index) => (
+                  {(rowsOrEmpty as PurchasesReportRow[]).map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>{item.date}</TableCell>
                       <TableCell>{item.invoices}</TableCell>
@@ -188,15 +191,16 @@ const ReportsSection = () => {
         );
 
       case "profits": {
-        const rows = reportData as ProfitsReportRow[];
+        const rows = rowsOrEmpty as ProfitsReportRow[];
         const totals = rows.reduce(
           (acc, row) => ({
             revenue: acc.revenue + Number(row.revenue ?? 0),
             cogs: acc.cogs + Number(row.cogs ?? 0),
+            expenses: acc.expenses + Number(row.expenses ?? 0),
             netProfit: acc.netProfit + Number(row.netProfit ?? 0),
             purchases: acc.purchases + Number(row.purchases ?? 0),
           }),
-          { revenue: 0, cogs: 0, netProfit: 0, purchases: 0 },
+          { revenue: 0, cogs: 0, expenses: 0, netProfit: 0, purchases: 0 },
         );
 
         return (
@@ -208,7 +212,7 @@ const ReportsSection = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="rounded-lg bg-green-50 border border-green-100 dark:bg-green-950/40 dark:border-green-900 p-4">
                   <p className="text-sm app-muted">إجمالي الإيرادات</p>
                   <p className="text-2xl font-bold text-green-700 dark:text-green-400">{formatCurrency(totals.revenue)}</p>
@@ -216,6 +220,10 @@ const ReportsSection = () => {
                 <div className="rounded-lg bg-orange-50 border border-orange-100 dark:bg-orange-950/40 dark:border-orange-900 p-4">
                   <p className="text-sm app-muted">التكلفة</p>
                   <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">{formatCurrency(totals.cogs)}</p>
+                </div>
+                <div className="rounded-lg bg-red-50 border border-red-100 dark:bg-red-950/40 dark:border-red-900 p-4">
+                  <p className="text-sm app-muted">المصروفات</p>
+                  <p className="text-2xl font-bold text-red-700 dark:text-red-400">{formatCurrency(totals.expenses)}</p>
                 </div>
                 <div className="rounded-lg bg-purple-50 border border-purple-100 dark:bg-purple-950/40 dark:border-purple-900 p-4">
                   <p className="text-sm app-muted">صافي الربح</p>
@@ -230,6 +238,7 @@ const ReportsSection = () => {
                     <TableHead className="text-right">التاريخ</TableHead>
                     <TableHead className="text-right">الإيرادات</TableHead>
                     <TableHead className="text-right">التكلفة</TableHead>
+                    <TableHead className="text-right">المصروفات</TableHead>
                     <TableHead className="text-right">صافي الربح</TableHead>
                     <TableHead className="text-right">المشتريات</TableHead>
                   </TableRow>
@@ -240,6 +249,7 @@ const ReportsSection = () => {
                       <TableCell>{item.date}</TableCell>
                       <TableCell className="text-green-600">{formatCurrency(item.revenue)}</TableCell>
                       <TableCell className="text-orange-600">{formatCurrency(item.cogs)}</TableCell>
+                      <TableCell className="text-red-600">{formatCurrency(item.expenses ?? 0)}</TableCell>
                       <TableCell className={`font-semibold ${item.netProfit >= 0 ? "text-purple-600" : "text-red-600"}`}>
                         {formatCurrency(item.netProfit)}
                       </TableCell>
@@ -250,6 +260,94 @@ const ReportsSection = () => {
               </Table>
             </CardContent>
           </Card>
+        );
+      }
+
+      case "expenses": {
+        const data = (reportData || {
+          total: 0,
+          count: 0,
+          byDate: [],
+          byType: [],
+        }) as ExpensesReportData;
+
+        return (
+          <div className="space-y-6" dir="rtl">
+            <Card className="app-surface">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 app-heading">
+                  <DollarSign className="w-5 h-5" />
+                  تقرير المصروفات
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <div className="rounded-lg bg-red-50 border border-red-100 dark:bg-red-950/40 dark:border-red-900 p-4">
+                    <p className="text-sm app-muted">إجمالي المصروفات</p>
+                    <p className="text-2xl font-bold text-red-700 dark:text-red-400">
+                      {formatCurrency(data.total)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-blue-50 border border-blue-100 dark:bg-blue-950/40 dark:border-blue-900 p-4">
+                    <p className="text-sm app-muted">عدد المصروفات</p>
+                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+                      {data.count}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-semibold mb-3">حسب النوع</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-right">النوع</TableHead>
+                          <TableHead className="text-right">العدد</TableHead>
+                          <TableHead className="text-right">الإجمالي</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {data.byType.map((row) => (
+                          <TableRow key={row.type}>
+                            <TableCell>{row.label}</TableCell>
+                            <TableCell>{row.count}</TableCell>
+                            <TableCell className="text-red-600 font-semibold">
+                              {formatCurrency(row.total)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold mb-3">حسب التاريخ</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-right">التاريخ</TableHead>
+                          <TableHead className="text-right">العدد</TableHead>
+                          <TableHead className="text-right">الإجمالي</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {data.byDate.map((row) => (
+                          <TableRow key={row.date}>
+                            <TableCell>{row.date}</TableCell>
+                            <TableCell>{row.count}</TableCell>
+                            <TableCell className="text-red-600 font-semibold">
+                              {formatCurrency(row.total)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         );
       }
 
@@ -272,7 +370,7 @@ const ReportsSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(reportData as TopSellingRow[]).map((item, index) => (
+                  {(rowsOrEmpty as TopSellingRow[]).map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{formatQuantity(item.quantity, item.unitType)}</TableCell>
@@ -306,7 +404,7 @@ const ReportsSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(reportData as PurchasedItemsRow[]).map((item, index) => (
+                  {(rowsOrEmpty as PurchasedItemsRow[]).map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{formatQuantity(item.quantity, item.unitType)}</TableCell>
@@ -340,7 +438,7 @@ const ReportsSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(reportData as SoldItemsRow[]).map((item, index) => (
+                  {(rowsOrEmpty as SoldItemsRow[]).map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell className="text-blue-600">
@@ -386,6 +484,7 @@ const ReportsSection = () => {
                 <SelectContent>
                   <SelectItem value="sales">تقرير المبيعات</SelectItem>
                   <SelectItem value="purchases">تقرير المشتريات</SelectItem>
+                  <SelectItem value="expenses">تقرير المصروفات</SelectItem>
                   <SelectItem value="profits">تقرير الأرباح</SelectItem>
                   <SelectItem value="top-selling">المنتجات الأكثر مبيعاً</SelectItem>
                   <SelectItem value="purchased-items">المنتجات المشتراة</SelectItem>

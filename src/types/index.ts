@@ -143,6 +143,27 @@ export interface ExpensesReportData {
   byType: { type: string; label: string; count: number; total: number }[];
 }
 
+export interface TopSellingRow {
+  name: string;
+  quantity: number;
+  revenue: number;
+  unitType?: ProductUnit;
+}
+
+export interface PurchasedItemsRow {
+  name: string;
+  quantity: number;
+  cost: number;
+  unitType?: ProductUnit;
+}
+
+export interface SoldItemsRow {
+  name: string;
+  quantity: number;
+  remaining: number;
+  unitType?: ProductUnit;
+}
+
 export type ReportType =
   | "sales"
   | "purchases"

@@ -12,11 +12,13 @@ import {
   Receipt,
   LogOut,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import SalesInterface from "@/components/SalesInterface";
 import ProductManagement from "@/components/ProductManagement";
 import PurchaseInvoices from "@/components/PurchaseInvoices";
+import ExpensesManagement from "@/components/ExpensesManagement";
 import ReportsSection from "@/components/ReportsSection";
 import SalesInvoices from "@/components/SalesInvoices";
 import UsersManagement from "@/components/UsersManagement";
@@ -59,6 +61,13 @@ const navTabs: {
     label: "فواتير الشراء",
     shortLabel: "شراء",
     icon: FileText,
+    roles: ["super_admin"],
+  },
+  {
+    value: "expenses",
+    label: "المصروفات",
+    shortLabel: "مصروفات",
+    icon: Wallet,
     roles: ["super_admin"],
   },
   {
@@ -118,7 +127,9 @@ const Index = () => {
           ? "sm:grid-cols-4"
           : visibleTabs.length === 5
             ? "sm:grid-cols-5"
-            : "sm:grid-cols-6";
+            : visibleTabs.length === 6
+              ? "sm:grid-cols-6"
+              : "sm:grid-cols-7";
 
   return (
     <div className="app-page" dir="rtl">
@@ -215,6 +226,10 @@ const Index = () => {
 
               <TabsContent value="invoices" className="m-0">
                 <PurchaseInvoices isActive={activeTab === "invoices"} />
+              </TabsContent>
+
+              <TabsContent value="expenses" className="m-0">
+                <ExpensesManagement />
               </TabsContent>
 
               <TabsContent value="reports" className="m-0">
