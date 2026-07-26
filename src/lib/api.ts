@@ -19,10 +19,7 @@ import {
 } from "@/lib/auth-storage";
 
 const API_URL =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD
-    ? "https://samra-backend.vercel.app/api"
-    : "/api");
+  import.meta.env.VITE_API_URL || "https://samra-backend.vercel.app/api";
 
 const PUBLIC_PATHS = new Set([
   "/health",
@@ -199,11 +196,39 @@ export const api = {
     username: string;
     password: string;
     name: string;
+    role?: User["role"];
   }) =>
     request<User>("/auth/admins", {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  getUsers: () => request<User[]>("/users"),
+  createUser: (data: {
+    username: string;
+    password: string;
+    name: string;
+    role: User["role"];
+  }) =>
+    request<User>("/users", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateUser: (
+    id: string,
+    data: {
+      username?: string;
+      password?: string;
+      name?: string;
+      role?: User["role"];
+    },
+  ) =>
+    request<User>(`/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deleteUser: (id: string) =>
+    request<void>(`/users/${id}`, { method: "DELETE" }),
 
   getCategories: () => request<Category[]>("/categories"),
   createCategory: (data: Omit<Category, "id">) =>

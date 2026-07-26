@@ -9,20 +9,22 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Plus, Calendar, Building, Receipt, Loader2, Barcode, Pencil } from "lucide-react";
+import { FileText, Plus, Calendar, Building, Receipt, Loader2, Barcode, Pencil, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { formatCurrency } from "@/lib/currency";
 import { calculatePurchaseItemsTotal } from "@/lib/invoice-math";
+import { printDocument } from "@/lib/print";
 import { api } from "@/lib/api";
 import {
   createPurchaseItemFromBarcode,
   lookupProductByBarcode,
   upsertPurchaseItemByProduct,
 } from "@/lib/barcode";
-import type { PurchaseInvoice, PurchaseItem } from "@/types";
+import type { PurchaseInvoice, PurchaseItem, ProductUnit } from "@/types";
 import BarcodeScannerInput from "@/components/BarcodeScannerInput";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { formatQuantity, quantityInputStep, unitLabel } from "@/lib/units";
 
 const emptyItem = (): PurchaseItem => ({
   productName: "",
@@ -31,6 +33,7 @@ const emptyItem = (): PurchaseItem => ({
   purchasePrice: 0,
   salePrice: 0,
   category: "",
+  unitType: "piece",
 });
 
 function getTodayDateString() {
@@ -83,7 +86,14 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
       supplier: invoice.supplier,
       date: invoice.date,
     });
-    setInvoiceItems(invoice.items.length > 0 ? invoice.items.map((item) => ({ ...item })) : [emptyItem()]);
+    setInvoiceItems(
+      invoice.items.length > 0
+        ? invoice.items.map((item) => ({
+            ...item,
+            unitType: item.unitType || "piece",
+          }))
+        : [emptyItem()],
+    );
     setIsInvoiceDialogOpen(false);
     setIsFormDialogOpen(true);
   }, []);
@@ -185,6 +195,42 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
 
   const calculateTotal = () => calculatePurchaseItemsTotal(invoiceItems);
 
+  const handlePrintPurchaseInvoice = (invoice: PurchaseInvoice) => {
+    const printed = printDocument({
+      title: "فاتورة شراء",
+      subtitle: invoice.invoiceNumber,
+      meta: [
+        { label: "رقم الفاتورة", value: invoice.invoiceNumber },
+        { label: "التاريخ", value: invoice.date },
+        { label: "الوقت", value: invoice.time },
+        { label: "المورد", value: invoice.supplier },
+      ],
+      lines: invoice.items.map((item) => ({
+        name: item.productName,
+        quantityLabel: formatQuantity(item.quantity, item.unitType),
+        unitPrice: item.purchasePrice,
+        lineTotal: Number(item.quantity) * Number(item.purchasePrice),
+        note: [
+          item.barcode ? `باركود: ${item.barcode}` : "",
+          item.category ? `فئة: ${item.category}` : "",
+          `بيع: ${formatCurrency(item.salePrice)}`,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      })),
+      total: calculatePurchaseItemsTotal(invoice.items),
+      totalLabel: "إجمالي الشراء",
+    });
+
+    if (!printed) {
+      toast({
+        title: "تعذر الطباعة",
+        description: "يرجى السماح بالنوافذ المنبثقة ثم المحاولة مرة أخرى",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -278,7 +324,7 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
                     void resetCreateForm();
                   }}
                 >
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="w-4 h-4 me-2" />
                   إضافة فاتورة شراء
                 </Button>
               </DialogTrigger>
@@ -341,7 +387,7 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
                     <div className="flex justify-between items-center mb-4" dir="rtl">
                       <Label className="text-lg font-semibold">بنود الفاتورة</Label>
                       <Button type="button" variant="outline" onClick={addInvoiceItem}>
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="w-4 h-4 me-2" />
                         إضافة بند
                       </Button>
                     </div>
@@ -349,7 +395,7 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
                     <div className="space-y-4">
                       {invoiceItems.map((item, index) => (
                         <Card key={index} className="p-4 bg-blue-50 border-blue-200" dir="rtl" data-scanner-ignore>
-                          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4">
                             <div>
                               <Label>اسم المنتج</Label>
                               <Input
@@ -391,12 +437,36 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
                               </Select>
                             </div>
                             <div>
-                              <Label>الكمية</Label>
+                              <Label>الوحدة</Label>
+                              <Select
+                                value={item.unitType || "piece"}
+                                onValueChange={(value: ProductUnit) =>
+                                  updateInvoiceItem(index, "unitType", value)
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="الوحدة" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="piece">قطعة</SelectItem>
+                                  <SelectItem value="kg">كجم</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label>الكمية ({unitLabel(item.unitType)})</Label>
                               <Input
                                 type="number"
+                                step={quantityInputStep(item.unitType)}
                                 value={item.quantity}
-                                onChange={(e) => updateInvoiceItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                                placeholder="0"
+                                onChange={(e) =>
+                                  updateInvoiceItem(
+                                    index,
+                                    "quantity",
+                                    Number.parseFloat(e.target.value) || 0,
+                                  )
+                                }
+                                placeholder={item.unitType === "kg" ? "0.000" : "0"}
                               />
                             </div>
                             <div>
@@ -529,7 +599,7 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
                               openEditForm(invoice);
                             }}
                           >
-                            <Pencil className="w-3 h-3 mr-1" />
+                            <Pencil className="w-3 h-3 me-1" />
                             تعديل
                           </Button>
                           <Button variant="ghost" size="sm">
@@ -607,7 +677,7 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
                         </TableCell>
                         <TableCell>{formatCurrency(item.purchasePrice)}</TableCell>
                         <TableCell className="text-green-600 font-medium">{formatCurrency(item.salePrice)}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>{formatQuantity(item.quantity, item.unitType)}</TableCell>
                         <TableCell className="font-semibold">
                           {formatCurrency(
                             Number(item.quantity) * Number(item.purchasePrice),
@@ -630,10 +700,19 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
 
               <div className="flex gap-2 pt-4">
                 <Button
-                  onClick={() => openEditForm(selectedInvoice)}
+                  type="button"
+                  onClick={() => handlePrintPurchaseInvoice(selectedInvoice)}
                   className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500"
                 >
-                  <Pencil className="w-4 h-4 mr-2" />
+                  <Printer className="w-4 h-4 me-2" />
+                  طباعة الفاتورة
+                </Button>
+                <Button
+                  onClick={() => openEditForm(selectedInvoice)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Pencil className="w-4 h-4 me-2" />
                   تعديل الفاتورة
                 </Button>
                 <Button variant="outline" onClick={() => setIsInvoiceDialogOpen(false)} className="flex-1">

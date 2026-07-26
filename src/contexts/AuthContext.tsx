@@ -15,7 +15,14 @@ import {
   hasRefreshToken,
   setTokens,
 } from "@/lib/auth-storage";
-import type { AuthResponse, User } from "@/types";
+import type { AuthResponse, User, UserRole } from "@/types";
+
+function normalizeUser(user: User): User {
+  return {
+    ...user,
+    role: (user.role as UserRole | undefined) || "super_admin",
+  };
+}
 
 interface AuthContextValue {
   user: User | null;
@@ -37,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       response.refreshToken,
       response.expiresIn,
     );
-    setUser(response.user);
+    setUser(normalizeUser(response.user));
   }, []);
 
   const logout = useCallback(async () => {
@@ -77,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("[auth] restoring session");
         const profile = await api.me();
         if (!cancelled) {
-          setUser(profile);
+          setUser(normalizeUser(profile));
           console.log("[auth] session restored:", profile.username);
         }
       } catch (error) {

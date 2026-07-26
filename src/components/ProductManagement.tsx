@@ -14,28 +14,32 @@ import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { formatCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { lookupProductByBarcode } from "@/lib/barcode";
-import type { Product } from "@/types";
+import type { Product, ProductUnit } from "@/types";
 import CategoryManagement from "./CategoryManagement";
 import BarcodeScannerInput from "./BarcodeScannerInput";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
+import { formatQuantity, quantityInputStep, unitLabel, unitPriceLabel } from "@/lib/units";
 
 interface ProductManagementProps {
   isActive?: boolean;
 }
+
+const emptyForm = {
+  name: "",
+  price: "",
+  cost: "",
+  stock: "",
+  barcode: "",
+  category: "",
+  unitType: "piece" as ProductUnit,
+};
 
 const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    price: "",
-    cost: "",
-    stock: "",
-    barcode: "",
-    category: ""
-  });
+  const [formData, setFormData] = useState(emptyForm);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -133,7 +137,8 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
       name: formData.name,
       price: parseFloat(formData.price),
       cost: parseFloat(formData.cost) || 0,
-      stock: parseInt(formData.stock) || 0,
+      stock: parseFloat(formData.stock) || 0,
+      unitType: formData.unitType,
       barcode: formData.barcode || undefined,
       category: formData.category || undefined,
     };
@@ -155,7 +160,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
 
       setIsDialogOpen(false);
       setEditingProduct(null);
-      setFormData({ name: "", price: "", cost: "", stock: "", barcode: "", category: "" });
+      setFormData(emptyForm);
     } catch (error) {
       toast({
         title: "خطأ",
@@ -173,7 +178,8 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
       cost: (product.cost ?? 0).toString(),
       stock: product.stock.toString(),
       barcode: product.barcode || "",
-      category: product.category || ""
+      category: product.category || "",
+      unitType: product.unitType || "piece",
     });
     setIsDialogOpen(true);
   };
@@ -211,10 +217,10 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
               className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
               onClick={() => {
                 setEditingProduct(null);
-                setFormData({ name: "", price: "", cost: "", stock: "", barcode: "", category: "" });
+                setFormData(emptyForm);
               }}
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4 me-2" />
               إضافة منتج جديد
             </Button>
           </DialogTrigger>
@@ -261,7 +267,9 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
                 />
               </div>
               <div data-scanner-ignore>
-                <Label htmlFor="price" className="text-right">سعر البيع *</Label>
+                <Label htmlFor="price" className="text-right">
+                  {unitPriceLabel(formData.unitType)} *
+                </Label>
                 <Input
                   id="price"
                   type="number"
@@ -273,7 +281,9 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
                 />
               </div>
               <div data-scanner-ignore>
-                <Label htmlFor="cost" className="text-right">تكلفة الشراء</Label>
+                <Label htmlFor="cost" className="text-right">
+                  {formData.unitType === "kg" ? "تكلفة شراء الكيلو" : "تكلفة الشراء"}
+                </Label>
                 <Input
                   id="cost"
                   type="number"
@@ -284,13 +294,33 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
                 />
               </div>
               <div data-scanner-ignore>
-                <Label htmlFor="stock" className="text-right">الكمية المتوفرة</Label>
+                <Label className="text-right mb-2 block">وحدة البيع *</Label>
+                <Select
+                  value={formData.unitType}
+                  onValueChange={(value: ProductUnit) =>
+                    setFormData((prev) => ({ ...prev, unitType: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر الوحدة" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="piece">بالقطعة</SelectItem>
+                    <SelectItem value="kg">بالوزن (كجم)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div data-scanner-ignore>
+                <Label htmlFor="stock" className="text-right">
+                  الكمية المتوفرة ({unitLabel(formData.unitType)})
+                </Label>
                 <Input
                   id="stock"
                   type="number"
+                  step={quantityInputStep(formData.unitType)}
                   value={formData.stock}
                   onChange={(e) => setFormData((prev) => ({ ...prev, stock: e.target.value }))}
-                  placeholder="0"
+                  placeholder={formData.unitType === "kg" ? "0.000" : "0"}
                 />
               </div>
               <div data-scanner-ignore>
@@ -346,12 +376,12 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
       <Card className="bg-white/60 backdrop-blur-sm border-blue-100">
         <CardContent className="pt-6">
           <div className="relative">
-            <Search className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
+            <Search className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="ابحث عن المنتجات..."
-              className="pr-10"
+              className="pe-10"
             />
           </div>
         </CardContent>
@@ -382,13 +412,19 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">السعر:</span>
+                    <span className="text-sm text-gray-600">{unitPriceLabel(product.unitType)}:</span>
                     <span className="font-bold text-blue-600">{formatCurrency(product.price)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">المخزون:</span>
                     <Badge variant={product.stock > 10 ? "default" : "destructive"}>
-                      {product.stock}
+                      {formatQuantity(product.stock, product.unitType)}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">الوحدة:</span>
+                    <Badge variant="outline">
+                      {product.unitType === "kg" ? "بالوزن" : "بالقطعة"}
                     </Badge>
                   </div>
                   {product.barcode && (
@@ -406,7 +442,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
                       onClick={() => handleEdit(product)}
                       className="flex-1"
                     >
-                      <Edit className="w-3 h-3 mr-1" />
+                      <Edit className="w-3 h-3 me-1" />
                       تعديل
                     </Button>
                     <Button

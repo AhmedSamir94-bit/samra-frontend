@@ -1,8 +1,13 @@
+export type UserRole = "super_admin" | "admin";
+export type ProductUnit = "piece" | "kg";
+
 export interface User {
   id: string;
   username: string;
   name: string;
+  role: UserRole;
 }
+
 
 export interface AuthResponse {
   accessToken: string;
@@ -24,6 +29,7 @@ export interface Product {
   price: number;
   cost?: number;
   stock: number;
+  unitType?: ProductUnit;
   barcode?: string;
   category?: string;
 }
@@ -34,6 +40,7 @@ export interface SaleItem {
   price: number;
   quantity: number;
   barcode?: string;
+  unitType?: ProductUnit;
 }
 
 export interface SaleInvoice {
@@ -53,6 +60,7 @@ export interface PurchaseItem {
   purchasePrice: number;
   salePrice: number;
   category: string;
+  unitType?: ProductUnit;
 }
 
 export interface PurchaseInvoice {
@@ -93,18 +101,21 @@ export interface TopSellingRow {
   name: string;
   quantity: number;
   revenue: number;
+  unitType?: ProductUnit;
 }
 
 export interface PurchasedItemsRow {
   name: string;
   quantity: number;
   cost: number;
+  unitType?: ProductUnit;
 }
 
 export interface SoldItemsRow {
   name: string;
   quantity: number;
   remaining: number;
+  unitType?: ProductUnit;
 }
 
 export type ReportType =

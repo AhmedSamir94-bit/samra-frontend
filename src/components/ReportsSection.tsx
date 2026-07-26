@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { FileText, Calendar, TrendingUp, ShoppingCart, Package, DollarSign, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
+import { formatQuantity } from "@/lib/units";
 import { api } from "@/lib/api";
 import type {
   ProfitsReportRow,
@@ -97,7 +98,7 @@ const ReportsSection = () => {
                         <TableRow>
                           <TableHead className="text-right">التاريخ</TableHead>
                           <TableHead className="text-right">عدد الفواتير</TableHead>
-                          <TableHead className="text-right">إجمالي القطع</TableHead>
+                          <TableHead className="text-right">إجمالي الكمية</TableHead>
                           <TableHead className="text-right">الإيرادات</TableHead>
                           <TableHead className="text-right">التكلفة</TableHead>
                           <TableHead className="text-right">صافي الربح</TableHead>
@@ -274,7 +275,7 @@ const ReportsSection = () => {
                   {(reportData as TopSellingRow[]).map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell>{item.quantity}</TableCell>
+                      <TableCell>{formatQuantity(item.quantity, item.unitType)}</TableCell>
                       <TableCell className="font-semibold text-blue-600">
                         {formatCurrency(item.revenue)}
                       </TableCell>
@@ -308,7 +309,7 @@ const ReportsSection = () => {
                   {(reportData as PurchasedItemsRow[]).map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell>{item.quantity}</TableCell>
+                      <TableCell>{formatQuantity(item.quantity, item.unitType)}</TableCell>
                       <TableCell className="font-semibold text-green-600">
                         {formatCurrency(item.cost)}
                       </TableCell>
@@ -342,9 +343,11 @@ const ReportsSection = () => {
                   {(reportData as SoldItemsRow[]).map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-blue-600">{item.quantity}</TableCell>
+                      <TableCell className="text-blue-600">
+                        {formatQuantity(item.quantity, item.unitType)}
+                      </TableCell>
                       <TableCell className="font-semibold text-orange-600">
-                        {item.remaining}
+                        {formatQuantity(item.remaining, item.unitType)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -415,7 +418,7 @@ const ReportsSection = () => {
                 onClick={generateReport}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-500"
               >
-                <Calendar className="w-4 h-4 mr-2" />
+                <Calendar className="w-4 h-4 me-2" />
                 إنشاء التقرير
               </Button>
             </div>

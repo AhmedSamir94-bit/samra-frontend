@@ -8,18 +8,50 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Receipt, FileText, Calendar, User, Printer, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
+import { formatQuantity } from "@/lib/units";
+import { printDocument } from "@/lib/print";
 import { api } from "@/lib/api";
 import type { SaleInvoice } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 
 const SalesInvoices = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<SaleInvoice | null>(null);
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   const { data: salesInvoices = [], isLoading } = useQuery({
     queryKey: ["sales"],
     queryFn: () => api.getSales(),
   });
 
+  const handlePrintInvoice = (invoice: SaleInvoice) => {
+    const printed = printDocument({
+      title: "فاتورة مبيعات",
+      subtitle: invoice.invoiceNumber,
+      meta: [
+        { label: "رقم الفاتورة", value: invoice.invoiceNumber },
+        { label: "التاريخ", value: invoice.date },
+        { label: "الوقت", value: invoice.time },
+        { label: "البائع", value: invoice.cashier },
+      ],
+      lines: invoice.items.map((item) => ({
+        name: item.name,
+        quantityLabel: formatQuantity(item.quantity, item.unitType),
+        unitPrice: item.price,
+        lineTotal: item.price * item.quantity,
+        note: item.barcode ? `باركود: ${item.barcode}` : undefined,
+      })),
+      total: invoice.total,
+    });
+
+    if (!printed) {
+      toast({
+        title: "تعذر الطباعة",
+        description: "يرجى السماح بالنوافذ المنبثقة ثم المحاولة مرة أخرى",
+        variant: "destructive",
+      });
+    }
+  };
   return (
     <div className="space-y-6">
       <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
@@ -145,7 +177,7 @@ const SalesInvoices = () => {
                       <TableRow key={index}>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{formatCurrency(item.price)}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>{formatQuantity(item.quantity, item.unitType)}</TableCell>
                         <TableCell className="font-semibold">
                           {formatCurrency(item.price * item.quantity)}
                         </TableCell>
@@ -163,8 +195,12 @@ const SalesInvoices = () => {
               </div>
 
               <div className="flex gap-2 pt-4">
-                <Button className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500">
-                  <Printer className="w-4 h-4 mr-2" />
+                <Button
+                  type="button"
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500"
+                  onClick={() => handlePrintInvoice(selectedInvoice)}
+                >
+                  <Printer className="w-4 h-4 me-2" />
                   طباعة الفاتورة
                 </Button>
                 <Button variant="outline" onClick={() => setIsInvoiceDialogOpen(false)}>

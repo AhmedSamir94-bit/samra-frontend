@@ -59,7 +59,7 @@ const DateInput = React.forwardRef<HTMLButtonElement, DateInputProps>(
               disabled={disabled}
               dir="rtl"
               className={cn(
-                "relative w-full h-10 justify-start pr-3 pl-10 text-right font-normal",
+                "relative w-full h-10 justify-start pe-3 ps-10 text-right font-normal",
                 !value && "text-muted-foreground",
                 className
               )}

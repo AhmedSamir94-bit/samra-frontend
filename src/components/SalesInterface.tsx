@@ -11,11 +11,21 @@ import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { formatCurrency } from "@/lib/currency";
 import { calculateSaleItemsTotal } from "@/lib/invoice-math";
+import { printDocument } from "@/lib/print";
 import { api } from "@/lib/api";
 import { lookupProductByBarcode } from "@/lib/barcode";
 import type { Product, SaleItem } from "@/types";
 import BarcodeScannerInput from "@/components/BarcodeScannerInput";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  defaultAddQuantity,
+  formatQuantity,
+  isWeightUnit,
+  quantityInputStep,
+  quantityStep,
+  unitPriceLabel,
+} from "@/lib/units";
 
 interface SalesInterfaceProps {
   isActive?: boolean;
@@ -28,6 +38,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteCartItemId, setDeleteCartItemId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: products = [], isLoading } = useQuery({
@@ -88,11 +99,12 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
     const currentCart = cartRef.current;
     const existingItem = findCartItem(currentCart, product);
     const currentQty = existingItem?.quantity ?? 0;
+    const delta = defaultAddQuantity(product.unitType);
 
-    if (currentQty + 1 > stock) {
+    if (currentQty + delta > stock) {
       toast({
         title: "الكمية غير كافية",
-        description: `الكمية المتوفرة من ${product.name}: ${stock}`,
+        description: `الكمية المتوفرة من ${product.name}: ${formatQuantity(stock, product.unitType)}`,
         variant: "destructive",
       });
       return false;
@@ -101,7 +113,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
     const nextCart = existingItem
       ? currentCart.map((item) =>
           item.id === existingItem.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: Number((item.quantity + delta).toFixed(3)) }
             : item
         )
       : [
@@ -110,8 +122,9 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
             id: product.id,
             name: product.name,
             price: product.price,
-            quantity: 1,
+            quantity: delta,
             barcode: product.barcode,
+            unitType: product.unitType || "piece",
           },
         ];
 
@@ -171,12 +184,17 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
       allProducts.find((p) => p.id === id) ??
       allProducts.find((p) => p.barcode && p.barcode === cartItem?.barcode);
 
+    const unitType = cartItem?.unitType || product?.unitType || "piece";
+    const roundedQty = isWeightUnit(unitType)
+      ? Number(newQuantity.toFixed(3))
+      : Math.floor(newQuantity);
+
     if (product) {
       const stock = Number(product.stock);
-      if (newQuantity > stock) {
+      if (roundedQty > stock) {
         toast({
           title: "الكمية غير كافية",
-          description: `الكمية المتوفرة: ${stock}`,
+          description: `الكمية المتوفرة: ${formatQuantity(stock, unitType)}`,
           variant: "destructive",
         });
         return;
@@ -184,11 +202,11 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
     }
 
     let nextCart: SaleItem[];
-    if (newQuantity <= 0) {
+    if (roundedQty <= 0) {
       nextCart = cartRef.current.filter((item) => item.id !== id);
     } else {
       nextCart = cartRef.current.map((item) =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
+        item.id === id ? { ...item, quantity: roundedQty } : item
       );
     }
 
@@ -218,6 +236,57 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
     }
 
     checkoutMutation.mutate();
+  };
+
+  const handlePrintCart = () => {
+    if (cart.length === 0) {
+      toast({
+        title: "السلة فارغة",
+        description: "لا توجد منتجات للطباعة",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const now = new Date();
+    const printed = printDocument({
+      title: "إيصال نقطة البيع",
+      subtitle: "مسودة قبل إتمام البيع",
+      meta: [
+        {
+          label: "التاريخ",
+          value: now.toLocaleDateString("ar-EG"),
+        },
+        {
+          label: "الوقت",
+          value: now.toLocaleTimeString("ar-EG", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+        {
+          label: "البائع",
+          value: user?.name || "البائع الرئيسي",
+        },
+      ],
+      lines: cart.map((item) => ({
+        name: item.name,
+        quantityLabel: formatQuantity(item.quantity, item.unitType),
+        unitPrice: item.price,
+        lineTotal: item.price * item.quantity,
+        note: item.barcode ? `باركود: ${item.barcode}` : undefined,
+      })),
+      total: calculateTotal(),
+      footerNote: "هذه مسودة — لم يتم إتمام البيع بعد",
+    });
+
+    if (!printed) {
+      toast({
+        title: "تعذر الطباعة",
+        description: "يرجى السماح بالنوافذ المنبثقة ثم المحاولة مرة أخرى",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -272,14 +341,18 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
                     >
                       <CardContent className="p-4 text-center">
                         <h3 className="font-semibold text-gray-800 mb-2">{product.name}</h3>
-                        <p className="text-lg font-bold text-blue-600 mb-2">
+                        <p className="text-lg font-bold text-blue-600 mb-1">
                           {formatCurrency(product.price)}
+                        </p>
+                        <p className="text-xs text-gray-500 mb-2">
+                          {unitPriceLabel(product.unitType)}
+                          {product.unitType === "kg" ? " · بالوزن" : ""}
                         </p>
                         <Badge
                           variant={product.stock > 0 ? "secondary" : "destructive"}
                           className="text-xs"
                         >
-                          متوفر: {product.stock}
+                          متوفر: {formatQuantity(product.stock, product.unitType)}
                         </Badge>
                       </CardContent>
                     </Card>
@@ -311,21 +384,47 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
                       >
                         <div className="flex-1">
                           <h4 className="font-semibold text-gray-800">{item.name}</h4>
-                          <p className="text-sm text-blue-600">{formatCurrency(item.price)}</p>
+                          <p className="text-sm text-blue-600">
+                            {formatCurrency(item.price)}
+                            {item.unitType === "kg" ? " / كجم" : ""}
+                          </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            onClick={() =>
+                              updateQuantity(
+                                item.id,
+                                item.quantity - quantityStep(item.unitType),
+                              )
+                            }
                           >
                             <Minus className="w-3 h-3" />
                           </Button>
-                          <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                          <Input
+                            type="number"
+                            step={quantityInputStep(item.unitType)}
+                            min={quantityInputStep(item.unitType)}
+                            value={item.quantity}
+                            onChange={(e) =>
+                              updateQuantity(
+                                item.id,
+                                Number.parseFloat(e.target.value) || 0,
+                              )
+                            }
+                            className="w-16 h-8 text-center px-1"
+                            dir="ltr"
+                          />
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            onClick={() =>
+                              updateQuantity(
+                                item.id,
+                                item.quantity + quantityStep(item.unitType),
+                              )
+                            }
                           >
                             <Plus className="w-3 h-3" />
                           </Button>
@@ -350,8 +449,13 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" className="border-blue-200 hover:bg-blue-50">
-                        <Printer className="w-4 h-4 mr-2" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-blue-200 hover:bg-blue-50"
+                        onClick={handlePrintCart}
+                      >
+                        <Printer className="w-4 h-4 me-2" />
                         طباعة
                       </Button>
                       <Button

@@ -123,7 +123,7 @@ const BarcodeScannerInput = ({
         spellCheck={false}
         data-barcode-scanner="true"
         className={cn(
-          "pr-10 text-center font-mono text-lg tracking-wider caret-transparent transition-colors",
+            className="pe-10 text-center font-mono text-lg tracking-wider caret-transparent transition-colors",
           flash && "border-green-500 bg-green-50 text-green-800",
           className,
         )}

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,8 @@ const CategoryManagement = ({
   isSubmitting = false,
 }: CategoryManagementProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const pendingDeleteIdRef = useRef<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -112,6 +113,11 @@ const CategoryManagement = ({
     }
   };
 
+  const requestDelete = (id: string) => {
+    pendingDeleteIdRef.current = id;
+    setIsDeleteConfirmOpen(true);
+  };
+
   return (
     <Card className="bg-white/60 backdrop-blur-sm border-blue-100" dir="rtl">
       <CardHeader>
@@ -130,7 +136,7 @@ const CategoryManagement = ({
                   setFormData({ name: "", description: "", color: "#3B82F6" });
                 }}
               >
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="w-4 h-4 me-2" />
                 إضافة فئة
               </Button>
             </DialogTrigger>
@@ -232,8 +238,9 @@ const CategoryManagement = ({
                   )}
                 </div>
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex gap-1">
                 <Button
+                  type="button"
                   size="sm"
                   variant="ghost"
                   onClick={() => handleEdit(category)}
@@ -242,9 +249,14 @@ const CategoryManagement = ({
                   <Edit className="w-3 h-3" />
                 </Button>
                 <Button
+                  type="button"
                   size="sm"
                   variant="ghost"
-                  onClick={() => setDeleteCategoryId(category.id)}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    requestDelete(category.id);
+                  }}
                   className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                 >
                   <Trash2 className="w-3 h-3" />
@@ -263,13 +275,15 @@ const CategoryManagement = ({
       </CardContent>
 
       <ConfirmDeleteDialog
-        open={!!deleteCategoryId}
+        open={isDeleteConfirmOpen}
         onOpenChange={(open) => {
-          if (!open) setDeleteCategoryId(null);
+          setIsDeleteConfirmOpen(open);
+          if (!open) pendingDeleteIdRef.current = null;
         }}
         onConfirm={() => {
-          if (deleteCategoryId) {
-            void handleDelete(deleteCategoryId);
+          const id = pendingDeleteIdRef.current;
+          if (id) {
+            void handleDelete(id);
           }
         }}
         description="سيتم حذف الفئة نهائياً ولا يمكن التراجع عن هذا الإجراء."

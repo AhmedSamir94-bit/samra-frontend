@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { Product, PurchaseItem } from "@/types";
+import type { Product, ProductUnit, PurchaseItem } from "@/types";
 
 export function upsertPurchaseItemByProduct(
   items: PurchaseItem[],
@@ -12,7 +12,13 @@ export function upsertPurchaseItemByProduct(
 
   if (index >= 0) {
     return items.map((item, i) =>
-      i === index ? { ...item, quantity: item.quantity + quantityDelta } : item
+      i === index
+        ? {
+            ...item,
+            quantity: Number((item.quantity + quantityDelta).toFixed(3)),
+            unitType: product.unitType || item.unitType || "piece",
+          }
+        : item
     );
   }
 
@@ -27,6 +33,7 @@ export function upsertPurchaseItemByProduct(
     purchasePrice: product.cost ?? 0,
     salePrice: product.price,
     category: product.category || "",
+    unitType: product.unitType || "piece",
   };
 
   if (emptyIndex >= 0) {
@@ -44,6 +51,7 @@ export function createPurchaseItemFromBarcode(barcode: string): PurchaseItem {
     purchasePrice: 0,
     salePrice: 0,
     category: "",
+    unitType: "piece",
   };
 }
 
@@ -60,4 +68,8 @@ export async function lookupProductByBarcode(barcode: string): Promise<Product |
     console.log("[barcode] API not found / error:", code, error);
     return null;
   }
+}
+
+export function defaultPurchaseUnit(unit?: ProductUnit): ProductUnit {
+  return unit || "piece";
 }
