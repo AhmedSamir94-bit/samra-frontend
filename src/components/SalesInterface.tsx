@@ -180,14 +180,17 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
 
   const updateQuantity = (id: string, newQuantity: number) => {
     const cartItem = cartRef.current.find((item) => item.id === id);
+    if (!cartItem) return;
+
     const product =
       allProducts.find((p) => p.id === id) ??
-      allProducts.find((p) => p.barcode && p.barcode === cartItem?.barcode);
+      allProducts.find((p) => p.barcode && p.barcode === cartItem.barcode);
 
-    const unitType = cartItem?.unitType || product?.unitType || "piece";
+    const unitType = cartItem.unitType || product?.unitType || "piece";
+    const rawQty = Number.isFinite(newQuantity) ? Math.max(0, newQuantity) : 0;
     const roundedQty = isWeightUnit(unitType)
-      ? Number(newQuantity.toFixed(3))
-      : Math.floor(newQuantity);
+      ? Number(rawQty.toFixed(3))
+      : Math.floor(rawQty);
 
     if (product) {
       const stock = Number(product.stock);
@@ -201,14 +204,10 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
       }
     }
 
-    let nextCart: SaleItem[];
-    if (roundedQty <= 0) {
-      nextCart = cartRef.current.filter((item) => item.id !== id);
-    } else {
-      nextCart = cartRef.current.map((item) =>
-        item.id === id ? { ...item, quantity: roundedQty } : item
-      );
-    }
+    // Keep the product in cart even at 0 — only trash removes it
+    const nextCart = cartRef.current.map((item) =>
+      item.id === id ? { ...item, quantity: roundedQty } : item,
+    );
 
     cartRef.current = nextCart;
     setCart(nextCart);
@@ -230,6 +229,16 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
       toast({
         title: "السلة فارغة",
         description: "يرجى إضافة منتجات إلى السلة أولاً",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const invalidItem = cart.find((item) => !(item.quantity > 0));
+    if (invalidItem) {
+      toast({
+        title: "كمية غير صالحة",
+        description: `يرجى إدخال كمية أكبر من صفر للمنتج: ${invalidItem.name}`,
         variant: "destructive",
       });
       return;
@@ -393,6 +402,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
                           <Button
                             size="sm"
                             variant="outline"
+                            disabled={item.quantity <= 0}
                             onClick={() =>
                               updateQuantity(
                                 item.id,
@@ -405,14 +415,20 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
                           <Input
                             type="number"
                             step={quantityInputStep(item.unitType)}
-                            min={quantityInputStep(item.unitType)}
+                            min={0}
                             value={item.quantity}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === "") {
+                                updateQuantity(item.id, 0);
+                                return;
+                              }
+                              const parsed = Number.parseFloat(raw);
                               updateQuantity(
                                 item.id,
-                                Number.parseFloat(e.target.value) || 0,
-                              )
-                            }
+                                Number.isFinite(parsed) ? parsed : 0,
+                              );
+                            }}
                             className="w-16 h-8 text-center px-1"
                             dir="ltr"
                           />
