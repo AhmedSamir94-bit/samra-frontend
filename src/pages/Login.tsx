@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError } from "@/lib/api";
+import { PwaInstallButton } from "@/components/PwaInstallButton";
 
 export default function Login() {
   const { login, isAuthenticated, isLoading } = useAuth();
@@ -106,6 +107,10 @@ export default function Login() {
               )}
             </Button>
           </form>
+
+          <div className="mt-5">
+            <PwaInstallButton variant="card" />
+          </div>
         </CardContent>
       </Card>
     </div>

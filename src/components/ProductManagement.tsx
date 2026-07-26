@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Package, Plus, Search, Edit, Trash2, Barcode, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { formatCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { lookupProductByBarcode } from "@/lib/barcode";
@@ -18,7 +19,11 @@ import CategoryManagement from "./CategoryManagement";
 import BarcodeScannerInput from "./BarcodeScannerInput";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
-const ProductManagement = () => {
+interface ProductManagementProps {
+  isActive?: boolean;
+}
+
+const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
@@ -83,6 +88,12 @@ const ProductManagement = () => {
   };
 
   const handleProductBarcodeScan = useCallback(async (barcode: string) => {
+    console.log("[barcode] products handleScan:", barcode, "dialogOpen=", isDialogOpen);
+    if (!isDialogOpen) {
+      console.log("[barcode] products ignored — dialog closed");
+      return;
+    }
+
     const existing = await lookupProductByBarcode(barcode);
     if (existing && existing.id !== editingProduct?.id) {
       toast({
@@ -98,7 +109,13 @@ const ProductManagement = () => {
       title: "تم مسح الباركود",
       description: "تم تعيين الباركود للمنتج",
     });
-  }, [editingProduct?.id, toast]);
+  }, [editingProduct?.id, isDialogOpen, toast]);
+
+  useBarcodeScanner({
+    onScan: handleProductBarcodeScan,
+    enabled: isActive && isDialogOpen,
+    idleResetMs: 600,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,6 +233,7 @@ const ProductManagement = () => {
                 <BarcodeScannerInput
                   onScan={handleProductBarcodeScan}
                   autoFocus={isDialogOpen}
+                  keepFocus={isDialogOpen}
                   placeholder="امسح باركود المنتج بالقارئ..."
                 />
                 <div className="flex gap-2 mt-2">

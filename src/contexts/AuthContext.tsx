@@ -8,7 +8,13 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "@/lib/api";
-import { clearTokens, hasStoredTokens, setTokens } from "@/lib/auth-storage";
+import {
+  AUTH_EXPIRED_EVENT,
+  clearTokens,
+  getRefreshToken,
+  hasRefreshToken,
+  setTokens,
+} from "@/lib/auth-storage";
 import type { AuthResponse, User } from "@/types";
 
 interface AuthContextValue {
@@ -26,13 +32,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const applyAuthResponse = useCallback((response: AuthResponse) => {
-    setTokens(response.accessToken, response.refreshToken);
+    setTokens(
+      response.accessToken,
+      response.refreshToken,
+      response.expiresIn,
+    );
     setUser(response.user);
   }, []);
 
   const logout = useCallback(async () => {
     try {
-      if (hasStoredTokens()) {
+      if (hasRefreshToken() || getRefreshToken()) {
         await api.logout();
       }
     } catch {
@@ -44,20 +54,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const onExpired = () => {
+      console.log("[auth] session expired — clearing user");
+      clearTokens();
+      setUser(null);
+    };
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function restoreSession() {
-      if (!hasStoredTokens()) {
+      if (!hasRefreshToken()) {
         setIsLoading(false);
         return;
       }
 
       try {
+        console.log("[auth] restoring session");
         const profile = await api.me();
         if (!cancelled) {
           setUser(profile);
+          console.log("[auth] session restored:", profile.username);
         }
-      } catch {
+      } catch (error) {
+        console.warn("[auth] session restore failed:", error);
         clearTokens();
         if (!cancelled) setUser(null);
       } finally {
@@ -74,8 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (username: string, password: string) => {
+      clearTokens();
       const response = await api.login(username, password);
       applyAuthResponse(response);
+      console.log("[auth] logged in:", response.user.username);
     },
     [applyAuthResponse],
   );
@@ -91,7 +117,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, isLoading, login, logout],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

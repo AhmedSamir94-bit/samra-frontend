@@ -13,30 +13,49 @@ import {
   clearTokens,
   getAccessToken,
   getRefreshToken,
+  isAccessTokenExpired,
+  notifyAuthExpired,
   setTokens,
 } from "@/lib/auth-storage";
 
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? "https://samra-backend.vercel.app/api"
+    : "/api");
+
+const PUBLIC_PATHS = new Set([
+  "/health",
+  "/auth/login",
+  "/auth/refresh",
+]);
 
 class ApiError extends Error {
-  constructor(message: string) {
+  status?: number;
+
+  constructor(message: string, status?: number) {
     super(message);
     this.name = "ApiError";
+    this.status = status;
   }
 }
 
 let refreshPromise: Promise<AuthResponse> | null = null;
 
 async function parseError(response: Response) {
-  const error = await response.json().catch(() => ({ message: response.statusText }));
+  const error = await response.json().catch(() => ({
+    message: response.statusText,
+  }));
   return error.message || "Request failed";
 }
 
 async function refreshAccessToken(): Promise<AuthResponse> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) {
-    throw new ApiError("Session expired");
+    throw new ApiError("Session expired", 401);
   }
+
+  console.log("[auth] refreshing access token");
 
   const response = await fetch(`${API_URL}/auth/refresh`, {
     method: "POST",
@@ -46,23 +65,54 @@ async function refreshAccessToken(): Promise<AuthResponse> {
 
   if (!response.ok) {
     clearTokens();
-    throw new ApiError(await parseError(response));
+    notifyAuthExpired();
+    throw new ApiError(await parseError(response), response.status);
   }
 
   const data = (await response.json()) as AuthResponse;
-  setTokens(data.accessToken, data.refreshToken);
+  setTokens(data.accessToken, data.refreshToken, data.expiresIn);
+  console.log("[auth] access token refreshed, expiresIn=", data.expiresIn);
   return data;
 }
 
-async function request<T>(path: string, options?: RequestInit, retry = true): Promise<T> {
-  const accessToken = getAccessToken();
+async function ensureAccessToken(): Promise<string | null> {
+  if (!getRefreshToken()) {
+    return getAccessToken();
+  }
+
+  if (isAccessTokenExpired()) {
+    if (!refreshPromise) {
+      refreshPromise = refreshAccessToken().finally(() => {
+        refreshPromise = null;
+      });
+    }
+    await refreshPromise;
+  }
+
+  return getAccessToken();
+}
+
+async function request<T>(
+  path: string,
+  options?: RequestInit,
+  retry = true,
+): Promise<T> {
+  const isPublic = PUBLIC_PATHS.has(path);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options?.headers as Record<string, string> | undefined),
   };
 
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
+  if (!isPublic) {
+    try {
+      const accessToken = await ensureAccessToken();
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+      }
+    } catch (error) {
+      if (!retry) throw error;
+      // Fall through — request may still 401 and we handle below
+    }
   }
 
   const response = await fetch(`${API_URL}${path}`, {
@@ -70,7 +120,12 @@ async function request<T>(path: string, options?: RequestInit, retry = true): Pr
     headers,
   });
 
-  if (response.status === 401 && retry && path !== "/auth/refresh" && path !== "/auth/login") {
+  if (
+    response.status === 401 &&
+    retry &&
+    !isPublic &&
+    path !== "/auth/logout"
+  ) {
     if (!refreshPromise) {
       refreshPromise = refreshAccessToken().finally(() => {
         refreshPromise = null;
@@ -82,12 +137,17 @@ async function request<T>(path: string, options?: RequestInit, retry = true): Pr
       return request<T>(path, options, false);
     } catch (error) {
       clearTokens();
+      notifyAuthExpired();
       throw error;
     }
   }
 
   if (!response.ok) {
-    throw new ApiError(await parseError(response));
+    if (response.status === 401 && !isPublic) {
+      clearTokens();
+      notifyAuthExpired();
+    }
+    throw new ApiError(await parseError(response), response.status);
   }
 
   if (response.status === 204) {
@@ -111,23 +171,35 @@ export const api = {
   health: () => request<{ status: string }>("/health", undefined, false),
 
   login: (username: string, password: string) =>
-    request<AuthResponse>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    }, false),
+    request<AuthResponse>(
+      "/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      },
+      false,
+    ),
 
   refresh: (refreshToken: string) =>
-    request<AuthResponse>("/auth/refresh", {
-      method: "POST",
-      body: JSON.stringify({ refreshToken }),
-    }, false),
+    request<AuthResponse>(
+      "/auth/refresh",
+      {
+        method: "POST",
+        body: JSON.stringify({ refreshToken }),
+      },
+      false,
+    ),
 
   logout: () =>
-    request<{ message: string }>("/auth/logout", { method: "POST" }),
+    request<{ message: string }>("/auth/logout", { method: "POST" }, false),
 
   me: () => request<User>("/auth/me"),
 
-  createAdmin: (data: { username: string; password: string; name: string }) =>
+  createAdmin: (data: {
+    username: string;
+    password: string;
+    name: string;
+  }) =>
     request<User>("/auth/admins", {
       method: "POST",
       body: JSON.stringify(data),
@@ -135,9 +207,15 @@ export const api = {
 
   getCategories: () => request<Category[]>("/categories"),
   createCategory: (data: Omit<Category, "id">) =>
-    request<Category>("/categories", { method: "POST", body: JSON.stringify(data) }),
+    request<Category>("/categories", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   updateCategory: (id: string, data: Partial<Omit<Category, "id">>) =>
-    request<Category>(`/categories/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    request<Category>(`/categories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
   deleteCategory: (id: string) =>
     request<void>(`/categories/${id}`, { method: "DELETE" }),
 
@@ -146,16 +224,25 @@ export const api = {
   getProductByBarcode: (code: string) =>
     request<Product>(`/products/barcode/${encodeURIComponent(code)}`),
   createProduct: (data: Omit<Product, "id">) =>
-    request<Product>("/products", { method: "POST", body: JSON.stringify(data) }),
+    request<Product>("/products", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   updateProduct: (id: string, data: Partial<Omit<Product, "id">>) =>
-    request<Product>(`/products/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    request<Product>(`/products/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
   deleteProduct: (id: string) =>
     request<void>(`/products/${id}`, { method: "DELETE" }),
 
   getSales: (from?: string, to?: string) =>
     request<SaleInvoice[]>(`/sales${buildQuery({ from, to })}`),
   getSale: (id: string) => request<SaleInvoice>(`/sales/${id}`),
-  createSale: (items: { id: string; name: string; quantity: number }[], cashier?: string) =>
+  createSale: (
+    items: { id: string; name: string; quantity: number }[],
+    cashier?: string,
+  ) =>
     request<SaleInvoice>("/sales", {
       method: "POST",
       body: JSON.stringify({ items, cashier }),

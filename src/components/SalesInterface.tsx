@@ -130,10 +130,17 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
 
   const handleBarcodeScan = useCallback(async (barcode: string) => {
     const normalized = barcode.trim();
+    console.log("[barcode] sales handleScan:", normalized);
+
     const localProduct = allProducts.find((product) => product.barcode === normalized);
+    if (localProduct) {
+      console.log("[barcode] sales local hit:", localProduct.name);
+    }
+
     const product = localProduct ?? (await lookupProductByBarcode(normalized));
 
     if (!product) {
+      console.warn("[barcode] sales product missing:", normalized);
       toast({
         title: "المنتج غير موجود",
         description: "لم يتم العثور على منتج بهذا الباركود",
@@ -143,6 +150,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
     }
 
     const added = addToCart(product, { silent: true });
+    console.log("[barcode] sales addToCart:", product.name, "ok=", added);
     if (added) {
       toast({
         title: "تمت الإضافة للسلة",
@@ -154,6 +162,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
   useBarcodeScanner({
     onScan: handleBarcodeScan,
     enabled: isActive,
+    idleResetMs: 600,
   });
 
   const updateQuantity = (id: string, newQuantity: number) => {

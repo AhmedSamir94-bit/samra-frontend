@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText, Plus, Calendar, Building, Receipt, Loader2, Barcode, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { formatCurrency } from "@/lib/currency";
 import { calculatePurchaseItemsTotal } from "@/lib/invoice-math";
 import { api } from "@/lib/api";
@@ -46,7 +47,11 @@ const initialInvoiceData = () => ({
   date: getTodayDateString(),
 });
 
-const PurchaseInvoices = () => {
+interface PurchaseInvoicesProps {
+  isActive?: boolean;
+}
+
+const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
   const [selectedInvoice, setSelectedInvoice] = useState<PurchaseInvoice | null>(null);
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
   const [deleteItemIndex, setDeleteItemIndex] = useState<number | null>(null);
@@ -130,6 +135,12 @@ const PurchaseInvoices = () => {
   };
 
   const handlePurchaseBarcodeScan = useCallback(async (barcode: string) => {
+    console.log("[barcode] purchase handleScan:", barcode, "formOpen=", isFormDialogOpen);
+    if (!isFormDialogOpen) {
+      console.log("[barcode] purchase ignored — form closed");
+      return;
+    }
+
     const product = await lookupProductByBarcode(barcode);
 
     if (product) {
@@ -164,7 +175,13 @@ const PurchaseInvoices = () => {
       title: "باركود جديد",
       description: "تم إضافة الباركود — أكمل بيانات المنتج الجديد",
     });
-  }, [toast]);
+  }, [isFormDialogOpen, toast]);
+
+  useBarcodeScanner({
+    onScan: handlePurchaseBarcodeScan,
+    enabled: isActive && isFormDialogOpen,
+    idleResetMs: 600,
+  });
 
   const calculateTotal = () => calculatePurchaseItemsTotal(invoiceItems);
 

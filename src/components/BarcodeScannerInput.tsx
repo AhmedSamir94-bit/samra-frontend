@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Barcode } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  BARCODE_SCANNED_EVENT,
+  emitBarcodeScan,
+} from "@/hooks/use-barcode-scanner";
 
 interface BarcodeScannerInputProps {
   onScan: (barcode: string) => void | Promise<void>;
@@ -9,10 +13,14 @@ interface BarcodeScannerInputProps {
   className?: string;
   disabled?: boolean;
   autoFocus?: boolean;
-  /** Refocus after blur unless focus moved to an element with data-scanner-ignore */
+  /** Soft-refocus when the page is idle (not while typing in other fields) */
   keepFocus?: boolean;
 }
 
+/**
+ * Shows the last scanned barcode in the field.
+ * Capture is handled by useBarcodeScanner; this input is the visual target.
+ */
 const BarcodeScannerInput = ({
   onScan,
   placeholder = "امسح الباركود بالقارئ...",
@@ -23,61 +31,79 @@ const BarcodeScannerInput = ({
 }: BarcodeScannerInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
-  const [isScanning, setIsScanning] = useState(false);
+  const [flash, setFlash] = useState(false);
+  const onScanRef = useRef(onScan);
+  onScanRef.current = onScan;
 
   const focusInput = useCallback(() => {
-    if (!disabled) {
-      inputRef.current?.focus();
-    }
+    if (disabled) return;
+    const el = inputRef.current;
+    if (!el) return;
+    if (document.activeElement === el) return;
+    el.focus({ preventScroll: true });
   }, [disabled]);
 
-  const processScan = useCallback(
-    async (raw: string) => {
-      const barcode = raw.trim();
-      if (!barcode) return;
+  const showScannedValue = useCallback((code: string) => {
+    setValue(code);
+    setFlash(true);
+    window.setTimeout(() => setFlash(false), 450);
+    console.log("[barcode] input display updated:", code);
+  }, []);
 
-      setIsScanning(true);
-      try {
-        await onScan(barcode);
-      } finally {
-        setValue("");
-        setIsScanning(false);
-        focusInput();
-      }
-    },
-    [onScan, focusInput]
-  );
+  // Reflect every accepted scan in this field (sales / products / purchases)
+  useEffect(() => {
+    const onScanned = (event: Event) => {
+      const detail = (event as CustomEvent<{ barcode?: string }>).detail;
+      const code = detail?.barcode?.trim();
+      if (!code) return;
+      showScannedValue(code);
+    };
+
+    window.addEventListener(BARCODE_SCANNED_EVENT, onScanned);
+    return () => window.removeEventListener(BARCODE_SCANNED_EVENT, onScanned);
+  }, [showScannedValue]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Manual fallback if someone pastes/types a full code somehow
     if (e.key === "Enter") {
-      e.preventDefault();
-      void processScan(value);
+      const code = (e.currentTarget.value || value).trim();
+      if (code.length >= 3) {
+        console.log("[barcode] input manual Enter fallback:", code);
+        e.preventDefault();
+        emitBarcodeScan(code, onScanRef.current, "scanner-input-manual");
+      }
     }
   };
 
   useEffect(() => {
-    if (autoFocus) {
-      focusInput();
-    }
+    if (!autoFocus) return;
+    const t = window.setTimeout(focusInput, 50);
+    return () => window.clearTimeout(t);
   }, [autoFocus, focusInput]);
 
   useEffect(() => {
     if (!keepFocus || disabled) return;
 
-    const input = inputRef.current;
-    if (!input) return;
-
-    const handleBlur = () => {
-      window.setTimeout(() => {
-        const active = document.activeElement;
-        if (active?.closest("[data-scanner-ignore]")) return;
-        if (active === input) return;
+    const interval = window.setInterval(() => {
+      const active = document.activeElement as HTMLElement | null;
+      if (!active || active === document.body) {
         focusInput();
-      }, 120);
-    };
+        return;
+      }
+      if (active.closest("[data-barcode-scanner]")) return;
+      if (active.closest("[data-scanner-ignore]")) return;
+      if (
+        active.tagName === "INPUT" ||
+        active.tagName === "TEXTAREA" ||
+        active.tagName === "SELECT" ||
+        active.isContentEditable
+      ) {
+        return;
+      }
+      focusInput();
+    }, 1500);
 
-    input.addEventListener("blur", handleBlur);
-    return () => input.removeEventListener("blur", handleBlur);
+    return () => window.clearInterval(interval);
   }, [keepFocus, disabled, focusInput]);
 
   return (
@@ -89,16 +115,17 @@ const BarcodeScannerInput = ({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        disabled={disabled || isScanning}
+        disabled={disabled}
+        readOnly
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
-        inputMode="text"
+        data-barcode-scanner="true"
         className={cn(
-          "pr-10 text-center font-mono text-lg tracking-wider",
-          isScanning && "opacity-70",
-          className
+          "pr-10 text-center font-mono text-lg tracking-wider caret-transparent transition-colors",
+          flash && "border-green-500 bg-green-50 text-green-800",
+          className,
         )}
         aria-label="قارئ الباركود"
       />
