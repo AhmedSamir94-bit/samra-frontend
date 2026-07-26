@@ -96,6 +96,14 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  /* Flip horizontal navigation icons in RTL so "back" points correctly */
+  [dir="rtl"] .lucide-chevron-left,
+  [dir="rtl"] .lucide-arrow-left,
+  [dir="rtl"] .lucide-chevron-right,
+  [dir="rtl"] .lucide-arrow-right {
+    transform: scaleX(-1);
+  }
 }
 
 @layer utilities {
