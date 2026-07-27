@@ -53,30 +53,33 @@ export default function Login() {
       <div className="absolute top-4 left-4">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-md shadow-lg border-blue-100 dark:border-slate-700 dark:bg-slate-900/80">
+      <Card className="w-full max-w-md shadow-lg border-blue-100 dark:border-slate-700 dark:bg-slate-900/80 dark:text-white">
         <CardHeader className="space-y-4 text-center">
           <div className="mx-auto w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
             <Calculator className="w-7 h-7 text-white" />
           </div>
           <div>
-            <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
-            <CardDescription>أدخل بياناتك للوصول إلى نظام نقطة البيع</CardDescription>
+            <CardTitle className="text-2xl dark:text-white">تسجيل الدخول</CardTitle>
+            <CardDescription className="dark:text-white/80">
+              أدخل بياناتك للوصول إلى نظام نقطة البيع
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">اسم المستخدم</Label>
+              <Label htmlFor="username" className="dark:text-white">اسم المستخدم</Label>
               <Input
                 id="username"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 autoComplete="username"
                 required
+                className="dark:text-white dark:placeholder:text-white/50"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">كلمة المرور</Label>
+              <Label htmlFor="password" className="dark:text-white">كلمة المرور</Label>
               <Input
                 id="password"
                 type="password"
@@ -84,18 +87,19 @@ export default function Login() {
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="current-password"
                 required
+                className="dark:text-white dark:placeholder:text-white/50"
               />
             </div>
 
             {error && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2 dark:text-red-300 dark:bg-red-950/50 dark:border-red-900">
+              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2 dark:text-red-200 dark:bg-red-950/50 dark:border-red-900">
                 {error}
               </p>
             )}
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               disabled={isSubmitting}
             >
               {isSubmitting ? (

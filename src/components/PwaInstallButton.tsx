@@ -47,21 +47,21 @@ function platformTitle(platform: Platform) {
 function InstallSteps({ platform }: { platform: Platform }) {
   if (platform === "ios") {
     return (
-      <ol className="space-y-3 text-sm text-gray-700 list-decimal list-inside">
+      <ol className="space-y-3 text-sm text-gray-700 dark:text-white list-decimal list-inside">
         <li>
           افتح الموقع في{" "}
-          <span className="font-semibold text-gray-900">Safari</span> فقط
+          <span className="font-semibold text-gray-900 dark:text-white">Safari</span> فقط
         </li>
         <li className="leading-relaxed">
           اضغط زر{" "}
-          <span className="inline-flex items-center gap-1 font-semibold text-blue-700">
+          <span className="inline-flex items-center gap-1 font-semibold text-blue-700 dark:text-white">
             المشاركة <Share className="w-3.5 h-3.5" />
           </span>{" "}
           في أسفل الشاشة
         </li>
         <li>
           اختر{" "}
-          <span className="font-semibold text-gray-900">
+          <span className="font-semibold text-gray-900 dark:text-white">
             «إضافة إلى الشاشة الرئيسية»
           </span>
         </li>
@@ -72,15 +72,15 @@ function InstallSteps({ platform }: { platform: Platform }) {
 
   if (platform === "android") {
     return (
-      <ol className="space-y-3 text-sm text-gray-700 list-decimal list-inside">
+      <ol className="space-y-3 text-sm text-gray-700 dark:text-white list-decimal list-inside">
         <li>
           افتح الموقع في{" "}
-          <span className="font-semibold text-gray-900">Chrome</span>
+          <span className="font-semibold text-gray-900 dark:text-white">Chrome</span>
         </li>
         <li>اضغط القائمة ⋮ أعلى اليمين</li>
         <li>
           اختر{" "}
-          <span className="font-semibold text-gray-900">
+          <span className="font-semibold text-gray-900 dark:text-white">
             «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»
           </span>
         </li>
@@ -90,14 +90,14 @@ function InstallSteps({ platform }: { platform: Platform }) {
   }
 
   return (
-    <ol className="space-y-3 text-sm text-gray-700 list-decimal list-inside">
+    <ol className="space-y-3 text-sm text-gray-700 dark:text-white list-decimal list-inside">
       <li>
         افتح الموقع في{" "}
-        <span className="font-semibold text-gray-900">Chrome أو Edge</span>
+        <span className="font-semibold text-gray-900 dark:text-white">Chrome أو Edge</span>
       </li>
       <li>
         اضغط أيقونة التثبيت في شريط العنوان، أو من القائمة اختر{" "}
-        <span className="font-semibold text-gray-900">«تثبيت التطبيق»</span>
+        <span className="font-semibold text-gray-900 dark:text-white">«تثبيت التطبيق»</span>
       </li>
       <li>أكد التثبيت لفتح سمرة كتطبيق على سطح المكتب</li>
     </ol>
@@ -177,7 +177,7 @@ export function PwaInstallButton({
     return (
       <div
         className={cn(
-          "rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-800 flex items-center gap-2",
+          "rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-800 flex items-center gap-2 dark:border-green-800 dark:bg-green-950/40 dark:text-white",
           className,
         )}
         dir="rtl"
@@ -189,14 +189,14 @@ export function PwaInstallButton({
   }
 
   const platformGuide = (
-    <div className="rounded-lg border border-blue-100 dark:border-slate-700 bg-blue-50/60 dark:bg-slate-800/60 p-3 space-y-2" dir="rtl">
-      <p className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+    <div className="rounded-lg border border-blue-100 dark:border-slate-700 bg-blue-50/60 dark:bg-slate-800/60 p-3 space-y-2 dark:text-white" dir="rtl">
+      <p className="text-sm font-semibold text-blue-900 dark:text-white flex items-center gap-2">
         <Smartphone className="w-4 h-4" />
         {platformTitle(platform)}
       </p>
       <InstallSteps platform={platform} />
       {platform === "ios" && (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-3 py-2 mt-2">
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-3 py-2 mt-2 dark:text-white dark:bg-amber-950/40 dark:border-amber-900">
           ملاحظة: آبل لا تدعم زر التثبيت المباشر — أضف التطبيق يدوياً من Safari.
         </p>
       )}
@@ -205,10 +205,10 @@ export function PwaInstallButton({
 
   const instructionsDialog = (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto" dir="rtl">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto dark:text-white" dir="rtl">
         <DialogHeader className="text-right space-y-1">
-          <DialogTitle>تثبيت تطبيق سمرة</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="dark:text-white">تثبيت تطبيق سمرة</DialogTitle>
+          <DialogDescription className="dark:text-white/80">
             تعليمات التثبيت لجهازك الحالي فقط
           </DialogDescription>
         </DialogHeader>
@@ -224,7 +224,10 @@ export function PwaInstallButton({
           type="button"
           variant="outline"
           size="sm"
-          className={cn("gap-1 border-blue-200 text-blue-700", className)}
+          className={cn(
+            "gap-1 border-blue-200 text-blue-700 dark:border-slate-600 dark:text-white",
+            className,
+          )}
           onClick={handleInstallClick}
         >
           <Download className="w-4 h-4" />
@@ -242,17 +245,17 @@ export function PwaInstallButton({
   return (
     <div
       className={cn(
-        "rounded-lg border border-blue-100 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 p-3 space-y-3 text-right",
+        "rounded-lg border border-blue-100 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 p-3 space-y-3 text-right dark:text-white",
         className,
       )}
       dir="rtl"
     >
       <div>
-        <p className="font-semibold text-blue-900 flex items-center gap-2">
+        <p className="font-semibold text-blue-900 dark:text-white flex items-center gap-2">
           <Download className="w-4 h-4" />
           ثبّت التطبيق على جهازك
         </p>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-500 dark:text-white/80 mt-1">
           {platform === "ios"
             ? "تم اكتشاف جهاز آيفون / آيباد"
             : platform === "android"
@@ -263,7 +266,7 @@ export function PwaInstallButton({
 
       <Button
         type="button"
-        className="w-full gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+        className="w-full gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
         onClick={handleInstallClick}
       >
         {platform === "ios" && !deferred ? (
