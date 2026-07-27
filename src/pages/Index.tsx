@@ -13,6 +13,8 @@ import {
   LogOut,
   Users,
   Wallet,
+  MessageCircle,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 import SalesInterface from "@/components/SalesInterface";
@@ -22,10 +24,13 @@ import ExpensesManagement from "@/components/ExpensesManagement";
 import ReportsSection from "@/components/ReportsSection";
 import SalesInvoices from "@/components/SalesInvoices";
 import UsersManagement from "@/components/UsersManagement";
+import DeliveryOrders from "@/components/DeliveryOrders";
+import CustomerChat from "@/components/CustomerChat";
 import { useAuth } from "@/contexts/AuthContext";
 import { PwaInstallButton } from "@/components/PwaInstallButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { api } from "@/lib/api";
+import { enableStaffPush } from "@/lib/push-notification";
 import type { UserRole } from "@/types";
 
 const navTabs: {
@@ -40,6 +45,20 @@ const navTabs: {
     label: "نقطة البيع",
     shortLabel: "البيع",
     icon: ShoppingCart,
+    roles: ["super_admin", "admin"],
+  },
+  {
+    value: "delivery-orders",
+    label: "طلبات التوصيل",
+    shortLabel: "توصيل",
+    icon: Truck,
+    roles: ["super_admin", "admin"],
+  },
+  {
+    value: "customer-chat",
+    label: "محادثات العملاء",
+    shortLabel: "محادثات",
+    icon: MessageCircle,
     roles: ["super_admin", "admin"],
   },
   {
@@ -106,6 +125,12 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState(visibleTabs[0]?.value || "sales");
 
   useEffect(() => {
+    if (user) {
+      void enableStaffPush();
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (!visibleTabs.some((tab) => tab.value === activeTab)) {
       setActiveTab(visibleTabs[0]?.value || "sales");
     }
@@ -127,9 +152,9 @@ const Index = () => {
           ? "sm:grid-cols-4"
           : visibleTabs.length === 5
             ? "sm:grid-cols-5"
-            : visibleTabs.length === 6
-              ? "sm:grid-cols-6"
-              : "sm:grid-cols-7";
+            : visibleTabs.length === 7
+              ? "sm:grid-cols-7"
+              : "sm:grid-cols-8";
 
   return (
     <div className="app-page" dir="rtl">
@@ -212,6 +237,14 @@ const Index = () => {
 
           <TabsContent value="sales" className="m-0">
             <SalesInterface isActive={activeTab === "sales"} />
+          </TabsContent>
+
+          <TabsContent value="delivery-orders" className="m-0">
+            <DeliveryOrders />
+          </TabsContent>
+
+          <TabsContent value="customer-chat" className="m-0">
+            <CustomerChat />
           </TabsContent>
 
           {role === "super_admin" && (

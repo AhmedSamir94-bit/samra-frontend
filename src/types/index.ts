@@ -181,3 +181,48 @@ export type ReportData =
   | PurchasedItemsRow[]
   | SoldItemsRow[]
   | ExpensesReportData;
+
+export type CustomerOrderStatus =
+  | "received"
+  | "preparing"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
+
+export interface CustomerOrder {
+  id: string;
+  orderNumber: string;
+  status: CustomerOrderStatus;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  total: number;
+  items: Array<{
+    name: string;
+    price: number;
+    quantity: number;
+    unitType: string;
+  }>;
+  statusHistory?: Array<{ status: string; at: string; note: string }>;
+  notes?: string;
+  createdAt?: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  orderId: string;
+  guestSessionId: string;
+  customerName: string;
+  orderNumber: string;
+  lastMessage: string;
+  unreadForStaff: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  orderId: string;
+  senderId: string;
+  senderRole: string;
+  text: string;
+  createdAt?: string;
+}

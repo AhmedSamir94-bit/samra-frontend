@@ -1,6 +1,10 @@
 import type {
   AuthResponse,
   Category,
+  ChatConversation,
+  ChatMessage,
+  CustomerOrder,
+  CustomerOrderStatus,
   Expense,
   ExpensePaymentMethod,
   ExpenseType,
@@ -343,6 +347,36 @@ export const api = {
 
   getReport: (type: ReportType, from?: string, to?: string) =>
     request<ReportData>(`/reports/${type}${buildQuery({ from, to })}`),
+
+  getDeliveryOrders: (status?: string) =>
+    request<CustomerOrder[]>(`/orders${buildQuery({ status })}`),
+
+  getDeliveryOrder: (id: string) => request<CustomerOrder>(`/orders/${id}`),
+
+  updateDeliveryOrderStatus: (
+    id: string,
+    status: CustomerOrderStatus,
+    note?: string,
+  ) =>
+    request<CustomerOrder>(`/orders/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status, note }),
+    }),
+
+  completeDeliveryOrder: (id: string) =>
+    request<CustomerOrder>(`/orders/${id}/complete`, { method: "POST" }),
+
+  getChatConversations: () =>
+    request<ChatConversation[]>("/staff/chat/conversations"),
+
+  getChatMessages: (orderId: string) =>
+    request<{ messages: ChatMessage[] }>(`/staff/chat/${orderId}`),
+
+  sendChatMessage: (orderId: string, text: string) =>
+    request<ChatMessage>(`/staff/chat/${orderId}`, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
 };
 
 export { ApiError };
