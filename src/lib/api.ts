@@ -269,8 +269,8 @@ export const api = {
   deleteProduct: (id: string) =>
     request<void>(`/products/${id}`, { method: "DELETE" }),
 
-  getSales: (from?: string, to?: string) =>
-    request<SaleInvoice[]>(`/sales${buildQuery({ from, to })}`),
+  getSales: (from?: string, to?: string, source: "pos" | "delivery" = "pos") =>
+    request<SaleInvoice[]>(`/sales${buildQuery({ from, to, source })}`),
   getSale: (id: string) => request<SaleInvoice>(`/sales/${id}`),
   createSale: (
     items: { id: string; name: string; quantity: number }[],
@@ -278,7 +278,7 @@ export const api = {
   ) =>
     request<SaleInvoice>("/sales", {
       method: "POST",
-      body: JSON.stringify({ items, cashier }),
+      body: JSON.stringify({ items, cashier, source: "pos" }),
     }),
 
   getPurchases: (from?: string, to?: string) =>

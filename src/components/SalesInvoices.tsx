@@ -61,7 +61,8 @@ const SalesInvoices = () => {
             فواتير المبيعات
           </CardTitle>
           <p className="text-sm app-muted">
-            إجمالي الفواتير: {salesInvoices.length} فاتورة
+            إجمالي فواتير الكاشير: {salesInvoices.length} فاتورة
+            <span className="ms-1">(بدون طلبات التوصيل)</span>
           </p>
         </CardHeader>
       </Card>

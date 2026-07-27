@@ -4,6 +4,7 @@ import type { CustomerOrderStatus } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 const STATUS_LABELS: Record<CustomerOrderStatus, string> = {
   received: "تم الاستلام",
@@ -21,6 +22,7 @@ const NEXT_STATUS: Partial<Record<CustomerOrderStatus, CustomerOrderStatus>> = {
 
 export default function DeliveryOrders() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["delivery-orders"],
@@ -36,8 +38,20 @@ export default function DeliveryOrders() {
       id: string;
       status: CustomerOrderStatus;
     }) => api.updateDeliveryOrderStatus(id, status),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["delivery-orders"] });
+      // Stock changes affect POS product list / cart availability
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      if (variables.status === "delivered") {
+        queryClient.invalidateQueries({ queryKey: ["sales"] });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "تعذر تحديث الطلب",
+        description: error instanceof Error ? error.message : "حدث خطأ",
+        variant: "destructive",
+      });
     },
   });
 
@@ -57,6 +71,16 @@ export default function DeliveryOrders() {
 
   return (
     <div className="space-y-4">
+      <Card className="app-surface-muted">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">طلبات التوصيل من تطبيق العملاء</CardTitle>
+          <p className="text-sm app-muted">
+            هذه الطلبات منفصلة عن فواتير الكاشير. المخزون يُحجز عند إنشاء الطلب،
+            وفواتير التوصيل لا تظهر ضمن فواتير المبيعات العادية.
+          </p>
+        </CardHeader>
+      </Card>
+
       {orders.map((order) => {
         const next = NEXT_STATUS[order.status];
         return (
@@ -74,6 +98,11 @@ export default function DeliveryOrders() {
                 <strong>{order.customerName}</strong> — {order.customerPhone}
               </p>
               <p className="app-muted">{order.deliveryAddress}</p>
+              {order.notes ? (
+                <p className="rounded-md bg-muted/50 px-2 py-1 text-xs">
+                  ملاحظات: {order.notes}
+                </p>
+              ) : null}
               <p>
                 الإجمالي: <strong>{order.total} ج.م</strong>
               </p>

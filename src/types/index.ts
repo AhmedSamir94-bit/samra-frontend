@@ -32,6 +32,7 @@ export interface Product {
   unitType?: ProductUnit;
   barcode?: string;
   category?: string;
+  imageUrl?: string;
 }
 
 export interface SaleItem {
@@ -51,6 +52,9 @@ export interface SaleInvoice {
   items: SaleItem[];
   total: number;
   cashier: string;
+  source?: "pos" | "delivery";
+  customerOrderId?: string;
+  customerOrderNumber?: string;
 }
 
 export interface PurchaseItem {

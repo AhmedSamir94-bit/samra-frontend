@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Package, Plus, Search, Edit, Trash2, Barcode, Loader2 } from "lucide-react";
+import { Package, Plus, Search, Edit, Trash2, Barcode, Loader2, ImagePlus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { formatCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { lookupProductByBarcode } from "@/lib/barcode";
+import { fileToProductImageDataUrl } from "@/lib/product-image";
 import type { Product, ProductUnit } from "@/types";
 import CategoryManagement from "./CategoryManagement";
 import BarcodeScannerInput from "./BarcodeScannerInput";
@@ -32,6 +33,7 @@ const emptyForm = {
   barcode: "",
   category: "",
   unitType: "piece" as ProductUnit,
+  imageUrl: "",
 };
 
 const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
@@ -40,6 +42,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState(emptyForm);
+  const [imageBusy, setImageBusy] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -121,6 +124,26 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
     idleResetMs: 600,
   });
 
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setImageBusy(true);
+    try {
+      const imageUrl = await fileToProductImageDataUrl(file);
+      setFormData((prev) => ({ ...prev, imageUrl }));
+    } catch (error) {
+      toast({
+        title: "تعذر رفع الصورة",
+        description: error instanceof Error ? error.message : "فشل معالجة الصورة",
+        variant: "destructive",
+      });
+    } finally {
+      setImageBusy(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -133,6 +156,15 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
       return;
     }
 
+    if (!formData.imageUrl) {
+      toast({
+        title: "الصورة مطلوبة",
+        description: "أضف صورة للمنتج قبل الحفظ",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const payload = {
       name: formData.name,
       price: parseFloat(formData.price),
@@ -141,6 +173,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
       unitType: formData.unitType,
       barcode: formData.barcode || undefined,
       category: formData.category || undefined,
+      imageUrl: formData.imageUrl,
     };
 
     try {
@@ -180,6 +213,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
       barcode: product.barcode || "",
       category: product.category || "",
       unitType: product.unitType || "piece",
+      imageUrl: product.imageUrl || "",
     });
     setIsDialogOpen(true);
   };
@@ -254,6 +288,53 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
                   <Button type="button" variant="outline" onClick={generateBarcode} data-scanner-ignore>
                     <Barcode className="w-4 h-4" />
                   </Button>
+                </div>
+              </div>
+              <div data-scanner-ignore>
+                <Label className="text-right mb-2 block">صورة المنتج *</Label>
+                <div className="space-y-3">
+                  {formData.imageUrl ? (
+                    <div className="relative overflow-hidden rounded-lg border bg-muted/30">
+                      <img
+                        src={formData.imageUrl}
+                        alt="معاينة المنتج"
+                        className="h-40 w-full object-cover"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="secondary"
+                        className="absolute left-2 top-2 h-8 w-8"
+                        onClick={() => setFormData((prev) => ({ ...prev, imageUrl: "" }))}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <label className="flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-sm text-muted-foreground hover:bg-muted/40">
+                      <ImagePlus className="h-6 w-6" />
+                      <span>{imageBusy ? "جاري تجهيز الصورة..." : "اختر صورة للمنتج"}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={imageBusy}
+                        onChange={handleImageChange}
+                      />
+                    </label>
+                  )}
+                  {formData.imageUrl && (
+                    <label className="inline-flex cursor-pointer text-sm text-blue-600 hover:underline">
+                      تغيير الصورة
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={imageBusy}
+                        onChange={handleImageChange}
+                      />
+                    </label>
+                  )}
                 </div>
               </div>
               <div data-scanner-ignore>
@@ -396,6 +477,15 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" dir="rtl">
             {products.map((product) => (
               <Card key={product.id} className="app-surface hover:shadow-lg transition-all duration-200">
+                {product.imageUrl ? (
+                  <div className="h-36 overflow-hidden rounded-t-lg border-b bg-muted/20">
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                ) : null}
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg text-gray-800">{product.name}</CardTitle>
