@@ -15,9 +15,13 @@ export function connectStaffChat(): Socket | null {
   if (!token) return null;
   if (socket?.connected) return socket;
 
+  // Websocket only — long-polling keeps a pending HTTP request open and makes
+  // the browser tab loading indicator spin forever on Vercel.
   socket = io(socketBaseUrl(), {
     auth: { token },
-    transports: ["websocket", "polling"],
+    transports: ["websocket"],
+    reconnectionAttempts: 5,
+    timeout: 8000,
   });
 
   return socket;

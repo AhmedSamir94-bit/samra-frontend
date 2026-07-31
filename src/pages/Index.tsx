@@ -125,9 +125,9 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState(visibleTabs[0]?.value || "sales");
 
   useEffect(() => {
-    if (user) {
-      void enableStaffPush();
-    }
+    if (!user) return;
+    // Fire-and-forget; never block the UI on push setup.
+    void enableStaffPush().catch(() => undefined);
   }, [user]);
 
   useEffect(() => {
@@ -236,41 +236,47 @@ const Index = () => {
           </div>
 
           <TabsContent value="sales" className="m-0">
-            <SalesInterface isActive={activeTab === "sales"} />
+            {activeTab === "sales" && (
+              <SalesInterface isActive={activeTab === "sales"} />
+            )}
           </TabsContent>
 
           <TabsContent value="delivery-orders" className="m-0">
-            <DeliveryOrders />
+            {activeTab === "delivery-orders" && <DeliveryOrders />}
           </TabsContent>
 
           <TabsContent value="customer-chat" className="m-0">
-            <CustomerChat />
+            {activeTab === "customer-chat" && <CustomerChat />}
           </TabsContent>
 
           {role === "super_admin" && (
             <>
               <TabsContent value="products" className="m-0">
-                <ProductManagement isActive={activeTab === "products"} />
+                {activeTab === "products" && (
+                  <ProductManagement isActive={activeTab === "products"} />
+                )}
               </TabsContent>
 
               <TabsContent value="sales-invoices" className="m-0">
-                <SalesInvoices />
+                {activeTab === "sales-invoices" && <SalesInvoices />}
               </TabsContent>
 
               <TabsContent value="invoices" className="m-0">
-                <PurchaseInvoices isActive={activeTab === "invoices"} />
+                {activeTab === "invoices" && (
+                  <PurchaseInvoices isActive={activeTab === "invoices"} />
+                )}
               </TabsContent>
 
               <TabsContent value="expenses" className="m-0">
-                <ExpensesManagement />
+                {activeTab === "expenses" && <ExpensesManagement />}
               </TabsContent>
 
               <TabsContent value="reports" className="m-0">
-                <ReportsSection />
+                {activeTab === "reports" && <ReportsSection />}
               </TabsContent>
 
               <TabsContent value="users" className="m-0">
-                <UsersManagement />
+                {activeTab === "users" && <UsersManagement />}
               </TabsContent>
             </>
           )}

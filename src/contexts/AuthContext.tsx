@@ -82,7 +82,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         console.log("[auth] restoring session");
-        const profile = await api.me();
+        const profile = await Promise.race([
+          api.me(),
+          new Promise<never>((_, reject) => {
+            window.setTimeout(
+              () => reject(new Error("Session restore timed out")),
+              12_000,
+            );
+          }),
+        ]);
         if (!cancelled) {
           setUser(normalizeUser(profile));
           console.log("[auth] session restored:", profile.username);

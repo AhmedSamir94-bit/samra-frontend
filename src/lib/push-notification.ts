@@ -33,8 +33,11 @@ export async function enableStaffPush(): Promise<boolean> {
     return false;
   }
 
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") return false;
+  // Never prompt on app load — that blocks UX and can feel like endless loading.
+  // Only resume an already-granted subscription.
+  if (Notification.permission !== "granted") {
+    return false;
+  }
 
   const regs = await navigator.serviceWorker.getRegistrations();
   for (const reg of regs) {
