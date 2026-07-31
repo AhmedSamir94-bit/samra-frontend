@@ -35,7 +35,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://samra-backend-seven.vercel.app/api/:path*"
+      "destination": "https://samra-backend.vercel.app/api/:path*"
     },
     {
       "source": "/((?!sw\\.js|workbox-.*\\.js|manifest\\.webmanifest|assets/|pwa-.*\\.png|favicon\\..*).*)",
