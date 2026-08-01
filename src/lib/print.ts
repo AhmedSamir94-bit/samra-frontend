@@ -79,7 +79,7 @@ function buildReceiptMarkup(doc: PrintDocument) {
       ${
         doc.footerNote
           ? `<p class="pos-footer">${escapeHtml(doc.footerNote)}</p>`
-          : `<p class="pos-footer">شكراً لتعاملكم معنا</p>
+          : `<p class="pos-footer">خدمه التوصيل</p>
       <p class="pos-footer-phone" dir="ltr">01007557530</p>`
       }
     </div>
