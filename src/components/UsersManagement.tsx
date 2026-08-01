@@ -377,7 +377,7 @@ const UsersManagement = () => {
                 </TableBody>
               </Table>
               {users.length === 0 && (
-                <p className="text-center text-gray-500 py-8">
+                <p className="text-center app-muted py-8">
                   لا يوجد مستخدمون
                 </p>
               )}

@@ -259,15 +259,15 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md" dir="rtl">
-            <DialogHeader>
+            <DialogHeader className="sticky top-0 z-10 -mx-6 -mt-6 border-b bg-background px-6 pb-4 pt-6">
               <DialogTitle>
                 {editingProduct ? "تعديل المنتج" : "إضافة منتج جديد"}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 pb-1">
               <div>
                 <Label className="text-right mb-2 block">الباركود</Label>
-                <p className="text-xs text-gray-500 mb-2">
+                <p className="text-xs app-muted mb-2">
                   امسح الباركود بالقارئ أو أدخله يدوياً
                 </p>
                 <BarcodeScannerInput
@@ -457,7 +457,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
       <Card className="app-surface-muted">
         <CardContent className="pt-6">
           <div className="relative">
-            <Search className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
+            <Search className="absolute right-3 top-3 w-4 h-4 text-slate-400 dark:text-slate-400 pointer-events-none" />
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -476,7 +476,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" dir="rtl">
             {products.map((product) => (
-              <Card key={product.id} className="app-surface hover:shadow-lg transition-all duration-200">
+              <Card key={product.id} className="app-surface hover:shadow-lg transition-all duration-200 dark:text-white">
                 {product.imageUrl ? (
                   <div className="h-36 overflow-hidden rounded-t-lg border-b bg-muted/20">
                     <img
@@ -487,12 +487,14 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
                   </div>
                 ) : null}
                 <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg text-gray-800">{product.name}</CardTitle>
+                  <div className="flex justify-between items-start gap-2">
+                    <CardTitle className="text-lg text-foreground dark:text-white">
+                      {product.name}
+                    </CardTitle>
                     {product.category && (
                       <Badge 
                         variant="secondary" 
-                        className="text-xs text-white border-0"
+                        className="text-xs text-white border-0 shrink-0"
                         style={{ backgroundColor: getCategoryColor(product.category) }}
                       >
                         {product.category}
@@ -502,25 +504,41 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm app-muted">{unitPriceLabel(product.unitType)}:</span>
-                    <span className="font-bold text-blue-600">{formatCurrency(product.price)}</span>
+                    <span className="text-sm app-muted dark:text-white/70">
+                      {unitPriceLabel(product.unitType)}:
+                    </span>
+                    <span className="font-bold text-blue-600 dark:text-white">
+                      {formatCurrency(product.price)}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm app-muted">المخزون:</span>
-                    <Badge variant={product.stock > 10 ? "default" : "destructive"}>
+                    <span className="text-sm app-muted dark:text-white/70">المخزون:</span>
+                    <Badge
+                      variant={product.stock > 10 ? "default" : "destructive"}
+                      className={
+                        product.stock > 10
+                          ? "bg-blue-600 text-white hover:bg-blue-600 dark:bg-blue-500"
+                          : "text-white"
+                      }
+                    >
                       {formatQuantity(product.stock, product.unitType)}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm app-muted">الوحدة:</span>
-                    <Badge variant="outline">
+                    <span className="text-sm app-muted dark:text-white/70">الوحدة:</span>
+                    <Badge
+                      variant="outline"
+                      className="dark:border-slate-500 dark:text-white"
+                    >
                       {product.unitType === "kg" ? "بالوزن" : "بالقطعة"}
                     </Badge>
                   </div>
                   {product.barcode && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm app-muted">الباركود:</span>
-                      <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-sm app-muted dark:text-white/70 shrink-0">
+                        الباركود:
+                      </span>
+                      <span className="text-xs font-mono bg-gray-100 text-gray-900 px-2 py-1 rounded dark:bg-slate-800 dark:text-white dark:border dark:border-slate-600">
                         {product.barcode}
                       </span>
                     </div>
@@ -530,7 +548,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
                       size="sm"
                       variant="outline"
                       onClick={() => handleEdit(product)}
-                      className="flex-1"
+                      className="flex-1 dark:border-slate-500 dark:text-white dark:hover:bg-slate-800"
                     >
                       <Edit className="w-3 h-3 me-1" />
                       تعديل
@@ -551,7 +569,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
           {products.length === 0 && (
             <Card className="app-surface-muted">
               <CardContent className="text-center py-12">
-                <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <Package className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                 <p className="app-muted">لا توجد منتجات متاحة</p>
               </CardContent>
             </Card>

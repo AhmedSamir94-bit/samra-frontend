@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: ["favicon.svg", "favicon.ico", "pwa-192.png", "pwa-512.png"],
       manifest: {
         name: "Samra POS",
@@ -57,6 +57,8 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         navigateFallback: "/index.html",
+        // Merge staff push handlers into the single PWA SW (avoids sw.js ↔ push-sw.js fights).
+        importScripts: ["push-handlers.js"],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
         runtimeCaching: [
           {

@@ -80,8 +80,8 @@ const SalesInvoices = () => {
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
           ) : salesInvoices.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Receipt className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <div className="text-center py-8 app-muted">
+              <Receipt className="w-12 h-12 mx-auto mb-4 text-slate-400 dark:text-slate-500" />
               <p>لا توجد فواتير مبيعات حتى الآن</p>
               <p className="text-sm mt-2">ستظهر الفواتير هنا بعد إتمام عمليات البيع</p>
             </div>

@@ -349,11 +349,11 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
                       onClick={() => addToCart(product)}
                     >
                       <CardContent className="p-4 text-center">
-                        <h3 className="font-semibold text-gray-800 mb-2">{product.name}</h3>
-                        <p className="text-lg font-bold text-blue-600 mb-1">
+                        <h3 className="font-semibold app-body mb-2">{product.name}</h3>
+                        <p className="text-lg font-bold app-price mb-1">
                           {formatCurrency(product.price)}
                         </p>
-                        <p className="text-xs text-gray-500 mb-2">
+                        <p className="text-xs app-muted mb-2">
                           {unitPriceLabel(product.unitType)}
                           {product.unitType === "kg" ? " · بالوزن" : ""}
                         </p>
@@ -382,18 +382,18 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
             </CardHeader>
             <CardContent className="space-y-4">
               {cart.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">السلة فارغة — امسح باركوداً للبدء</p>
+                <p className="text-center app-muted py-8">السلة فارغة — امسح باركوداً للبدء</p>
               ) : (
                 <>
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {cart.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between p-3 bg-blue-50 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-blue-50 dark:bg-slate-800/80 rounded-lg"
                       >
                         <div className="flex-1">
-                          <h4 className="font-semibold text-gray-800">{item.name}</h4>
-                          <p className="text-sm text-blue-600">
+                          <h4 className="font-semibold app-body">{item.name}</h4>
+                          <p className="text-sm app-price">
                             {formatCurrency(item.price)}
                             {item.unitType === "kg" ? " / كجم" : ""}
                           </p>
@@ -459,9 +459,9 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
                   <Separator />
 
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center text-lg font-bold">
+                    <div className="flex justify-between items-center text-lg font-bold app-body">
                       <span>الإجمالي:</span>
-                      <span className="text-blue-600">{formatCurrency(calculateTotal())}</span>
+                      <span className="app-price">{formatCurrency(calculateTotal())}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">

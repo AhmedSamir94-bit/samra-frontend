@@ -342,7 +342,7 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
                         id="invoiceNumber"
                         value={invoiceData.invoiceNumber}
                         readOnly
-                        className="bg-gray-50 text-gray-700 cursor-default"
+                        className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-default"
                         placeholder="يتم التوليد تلقائياً"
                       />
                     </div>
@@ -551,8 +551,8 @@ const PurchaseInvoices = ({ isActive = true }: PurchaseInvoicesProps) => {
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
           ) : invoices.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <div className="text-center py-8 app-muted">
+              <FileText className="w-12 h-12 mx-auto mb-4 text-slate-400" />
               <p>لا توجد فواتير شراء حتى الآن</p>
               <p className="text-sm mt-2">قم بإضافة فاتورة شراء جديدة لتظهر هنا</p>
             </div>

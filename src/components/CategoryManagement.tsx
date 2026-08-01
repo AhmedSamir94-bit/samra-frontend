@@ -234,7 +234,7 @@ const CategoryManagement = ({
                 <div>
                   <span className="font-medium text-sm">{category.name}</span>
                   {category.description && (
-                    <p className="text-xs text-gray-500">{category.description}</p>
+                    <p className="text-xs app-muted">{category.description}</p>
                   )}
                 </div>
               </div>
@@ -266,8 +266,8 @@ const CategoryManagement = ({
           ))}
         </div>
         {categories.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+          <div className="text-center py-8 app-muted">
+            <Package className="w-12 h-12 mx-auto mb-4 text-slate-400" />
             <p>لا توجد فئات محددة</p>
             <p className="text-sm mt-2">قم بإضافة فئة جديدة لتنظيم المنتجات</p>
           </div>

@@ -39,13 +39,20 @@ export async function enableStaffPush(): Promise<boolean> {
     return false;
   }
 
+  // Use the single VitePWA service worker. Do NOT unregister it or register a
+  // second push-sw.js — that causes endless reload loops in normal browsers.
   const regs = await navigator.serviceWorker.getRegistrations();
   for (const reg of regs) {
-    const script = reg.active?.scriptURL || "";
-    if (script && !script.includes("push-sw.js")) await reg.unregister();
+    const script =
+      reg.active?.scriptURL ||
+      reg.waiting?.scriptURL ||
+      reg.installing?.scriptURL ||
+      "";
+    if (script.includes("push-sw.js")) {
+      await reg.unregister().catch(() => undefined);
+    }
   }
 
-  await navigator.serviceWorker.register("/push-sw.js");
   const ready = await navigator.serviceWorker.ready;
 
   const keyRes = await fetch(`${API_URL}/push/vapid-public-key`);
@@ -53,13 +60,13 @@ export async function enableStaffPush(): Promise<boolean> {
   const key = keyData.publicKey?.trim();
   if (!key) return false;
 
-  const existing = await ready.pushManager.getSubscription();
-  if (existing) await existing.unsubscribe().catch(() => undefined);
-
-  const sub = await ready.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(key),
-  });
+  let sub = await ready.pushManager.getSubscription();
+  if (!sub) {
+    sub = await ready.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key),
+    });
+  }
 
   const json = sub.toJSON();
   if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return false;

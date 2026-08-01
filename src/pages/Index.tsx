@@ -111,7 +111,7 @@ const roleLabels: Record<UserRole, string> = {
 };
 
 const tabTriggerClassName =
-  "shrink-0 min-w-[4.75rem] flex-1 flex-col gap-1 px-2 py-2 h-auto whitespace-normal leading-tight text-center sm:min-w-0 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white";
+  "shrink-0 min-w-[4.75rem] flex-1 flex-col gap-1 px-2 py-2 h-auto whitespace-normal leading-tight text-center text-slate-700 dark:text-slate-200 sm:min-w-0 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white";
 
 const Index = () => {
   const { user, logout } = useAuth();
@@ -188,7 +188,7 @@ const Index = () => {
                 {isBackendConnected ? "متصل" : isBackendDisconnected ? "غير متصل" : "جاري الاتصال..."}
               </Badge>
               {user && (
-                <Badge variant="outline" className="text-gray-700 border-gray-200 dark:text-slate-300 dark:border-slate-600">
+                <Badge variant="outline" className="text-slate-800 border-slate-300 dark:text-slate-100 dark:border-slate-500">
                   {user.name}
                 </Badge>
               )}
@@ -197,14 +197,14 @@ const Index = () => {
                   variant="outline"
                   className={
                     role === "super_admin"
-                      ? "text-purple-700 border-purple-200 bg-purple-50 dark:text-purple-300 dark:border-purple-800 dark:bg-purple-950/50"
-                      : "text-blue-700 border-blue-200 bg-blue-50 dark:text-blue-300 dark:border-blue-800 dark:bg-blue-950/50"
+                      ? "text-purple-800 border-purple-300 bg-purple-50 dark:text-purple-200 dark:border-purple-500 dark:bg-purple-950/50"
+                      : "text-blue-800 border-blue-300 bg-blue-50 dark:text-blue-200 dark:border-blue-500 dark:bg-blue-950/50"
                   }
                 >
                   {roleLabels[role]}
                 </Badge>
               )}
-              <Badge variant="outline" className="text-blue-600 border-blue-200 dark:text-blue-400 dark:border-blue-800">
+              <Badge variant="outline" className="text-blue-700 border-blue-300 dark:text-blue-200 dark:border-blue-500">
                 المتجر الرئيسي
               </Badge>
               <ThemeToggle />
