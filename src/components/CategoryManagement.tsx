@@ -224,7 +224,7 @@ const CategoryManagement = ({
           {categories.map((category) => (
             <div
               key={category.id}
-              className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-blue-100 dark:border-slate-700 flex items-center justify-between group hover:shadow-md transition-all duration-200"
+              className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-500 flex items-center justify-between group hover:shadow-md transition-all duration-200"
             >
               <div className="flex items-center gap-2">
                 <div

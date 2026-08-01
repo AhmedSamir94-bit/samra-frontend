@@ -32,9 +32,8 @@ All colors MUST be HSL.
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    /* Stronger borders so fields stay visible on Windows / high-DPI */
-    --border: 214 20% 78%;
-    --input: 215 18% 68%;
+    --border: 214 22% 72%;
+    --input: 215 20% 62%;
     --ring: 221.2 83.2% 53.3%;
 
     --radius: 0.5rem;
@@ -75,8 +74,8 @@ All colors MUST be HSL.
     --destructive: 0 62.8% 40%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 215 20% 38%;
-    --input: 215 18% 48%;
+    --border: 215 18% 48%;
+    --input: 215 16% 55%;
     --ring: 224.3 76.3% 48%;
 
     --sidebar-background: 222 47% 8%;
@@ -114,11 +113,11 @@ All colors MUST be HSL.
   }
 
   .app-surface {
-    @apply bg-white/80 backdrop-blur-sm border-blue-100 dark:bg-slate-900/80 dark:border-slate-700;
+    @apply border border-slate-300 bg-white shadow-sm dark:border-slate-500 dark:bg-slate-900;
   }
 
   .app-surface-muted {
-    @apply bg-white/60 backdrop-blur-sm border-blue-100 dark:bg-slate-900/60 dark:border-slate-700;
+    @apply border border-slate-300 bg-slate-50 shadow-sm dark:border-slate-500 dark:bg-slate-900/95;
   }
 
   .app-heading {
