@@ -156,15 +156,6 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
       return;
     }
 
-    if (!formData.imageUrl) {
-      toast({
-        title: "الصورة مطلوبة",
-        description: "أضف صورة للمنتج قبل الحفظ",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const payload = {
       name: formData.name,
       price: parseFloat(formData.price),
@@ -173,7 +164,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
       unitType: formData.unitType,
       barcode: formData.barcode || undefined,
       category: formData.category || undefined,
-      imageUrl: formData.imageUrl,
+      imageUrl: formData.imageUrl || undefined,
     };
 
     try {
@@ -259,7 +250,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md" dir="rtl">
-            <DialogHeader className="sticky top-0 z-10 -mx-6 -mt-6 border-b bg-background px-6 pb-4 pt-6">
+            <DialogHeader className="sticky top-0 z-10 -mx-6 -mt-6 border-b bg-background px-6 pb-4 pt-6 pl-14">
               <DialogTitle>
                 {editingProduct ? "تعديل المنتج" : "إضافة منتج جديد"}
               </DialogTitle>
@@ -291,7 +282,7 @@ const ProductManagement = ({ isActive = true }: ProductManagementProps) => {
                 </div>
               </div>
               <div data-scanner-ignore>
-                <Label className="text-right mb-2 block">صورة المنتج *</Label>
+                <Label className="text-right mb-2 block">صورة المنتج (اختياري)</Label>
                 <div className="space-y-3">
                   {formData.imageUrl ? (
                     <div className="relative overflow-hidden rounded-lg border bg-muted/30">
