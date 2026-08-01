@@ -213,19 +213,21 @@ function createThermalIframe(): HTMLIFrameElement {
 }
 
 /**
- * Measure receipt height and lock @page size to that exact size
- * so the printer does not feed a full A4 of blank paper.
+ * Measure receipt height and lock @page size to content.
+ * Page height must stay >= width — if height < width, Chrome/Edge
+ * treat the page as landscape and rotate the receipt.
  */
 function fitPageToContent(frameWindow: Window, iframe: HTMLIFrameElement) {
   const frameDoc = frameWindow.document;
   const receipt = frameDoc.getElementById("receipt");
   if (!receipt) return;
 
-  // Let layout settle, then measure content only.
   const heightPx = Math.ceil(
     Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height),
   );
-  const heightMm = Math.max(20, Math.ceil(heightPx / CSS_PX_PER_MM) + 2);
+  const contentHeightMm = Math.max(1, Math.ceil(heightPx / CSS_PX_PER_MM) + 2);
+  // Keep portrait: second @page length must be >= first (width).
+  const pageHeightMm = Math.max(contentHeightMm, THERMAL_WIDTH_MM + 1);
 
   iframe.style.height = `${heightPx}px`;
   iframe.style.width = `${THERMAL_CONTENT_PX + 16}px`;
@@ -235,13 +237,14 @@ function fitPageToContent(frameWindow: Window, iframe: HTMLIFrameElement) {
   style.id = "thermal-page-fit";
   style.textContent = `
     @page {
-      size: ${THERMAL_WIDTH_MM}mm ${heightMm}mm;
+      size: ${THERMAL_WIDTH_MM}mm ${pageHeightMm}mm;
       margin: 0;
     }
     @media print {
       html, body {
         width: ${THERMAL_WIDTH_MM}mm !important;
-        height: ${heightMm}mm !important;
+        height: auto !important;
+        min-height: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
         overflow: hidden !important;
