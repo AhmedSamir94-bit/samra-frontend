@@ -81,7 +81,6 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
             quantityLabel: formatQuantity(item.quantity, item.unitType),
             unitPrice: item.price,
             lineTotal: item.price * item.quantity,
-            note: item.barcode ? `باركود: ${item.barcode}` : undefined,
           })),
           total: sale.total,
         });
