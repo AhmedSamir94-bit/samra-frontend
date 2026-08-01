@@ -32,9 +32,10 @@ export type PrintHandle = {
   close: () => void;
 };
 
-/** Common POS roll width */
+/** Paper width vs safe printable width (thermal printers clip ~3–6mm each side) */
 const THERMAL_WIDTH_MM = 80;
-const THERMAL_CONTENT_PX = 302;
+const THERMAL_SAFE_WIDTH_MM = 68;
+const THERMAL_CONTENT_PX = 260;
 
 function escapeHtml(value: string) {
   return value
@@ -95,31 +96,35 @@ function buildPrintHtml(doc: PrintDocument) {
       width: ${THERMAL_WIDTH_MM}mm;
       height: auto !important;
       min-height: 0 !important;
-      overflow: visible !important;
+      overflow: hidden !important;
     }
     body {
       font-family: Tahoma, "Segoe UI", Arial, sans-serif;
-      font-size: 12px;
+      font-size: 11px;
       line-height: 1.3;
       direction: rtl;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .receipt {
-      width: ${THERMAL_WIDTH_MM}mm;
-      max-width: ${THERMAL_WIDTH_MM}mm;
-      padding: 2mm;
+      width: ${THERMAL_SAFE_WIDTH_MM}mm;
+      max-width: ${THERMAL_SAFE_WIDTH_MM}mm;
+      margin: 0 auto;
+      padding: 2mm 0;
+      overflow: hidden;
     }
     .store-title {
       margin: 0 0 2px;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       text-align: center;
+      overflow-wrap: anywhere;
     }
     .subtitle {
       margin: 0 0 6px;
       text-align: center;
-      font-size: 11px;
+      font-size: 10px;
+      overflow-wrap: anywhere;
     }
     .divider {
       border: 0;
@@ -129,43 +134,73 @@ function buildPrintHtml(doc: PrintDocument) {
     .meta-row {
       display: flex;
       justify-content: space-between;
-      gap: 8px;
-      font-size: 11px;
+      align-items: flex-start;
+      gap: 6px;
+      font-size: 10px;
       margin: 1px 0;
     }
-    .meta-label { opacity: 0.8; }
-    .meta-value { font-weight: 700; text-align: left; }
+    .meta-label {
+      opacity: 0.8;
+      flex: 0 1 auto;
+      min-width: 0;
+    }
+    .meta-value {
+      font-weight: 700;
+      flex: 1 1 auto;
+      min-width: 0;
+      text-align: start;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     .item { margin: 5px 0; }
     .item-name {
       font-weight: 700;
-      font-size: 12px;
+      font-size: 11px;
+      overflow-wrap: anywhere;
       word-break: break-word;
     }
     .item-note {
-      font-size: 10px;
+      font-size: 9px;
       opacity: 0.75;
       margin-top: 1px;
+      overflow-wrap: anywhere;
     }
     .item-row {
       display: flex;
       justify-content: space-between;
-      gap: 8px;
-      font-size: 11px;
+      align-items: flex-start;
+      gap: 6px;
+      font-size: 10px;
       margin-top: 2px;
     }
-    .item-total { font-weight: 700; white-space: nowrap; }
+    .item-row > span:first-child {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .item-total {
+      font-weight: 700;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
     .total {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 14px;
+      gap: 6px;
+      font-size: 13px;
       font-weight: 700;
       padding-top: 2px;
+    }
+    .total > span {
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
     .footer {
       margin: 8px 0 0;
       text-align: center;
-      font-size: 11px;
+      font-size: 10px;
+      overflow-wrap: anywhere;
     }
     @media print {
       @page {
@@ -175,6 +210,10 @@ function buildPrintHtml(doc: PrintDocument) {
       html, body {
         width: ${THERMAL_WIDTH_MM}mm !important;
         height: auto !important;
+      }
+      .receipt {
+        width: ${THERMAL_SAFE_WIDTH_MM}mm !important;
+        max-width: ${THERMAL_SAFE_WIDTH_MM}mm !important;
       }
     }
   </style>
