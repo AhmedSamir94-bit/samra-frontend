@@ -25,7 +25,7 @@ export type PrintDocument = {
 
 /** Paper width vs safe printable width (thermal printers clip ~3–6mm each side) */
 const THERMAL_WIDTH_MM = 80;
-const THERMAL_SAFE_WIDTH_MM = 68;
+const THERMAL_SAFE_WIDTH_MM = 62;
 const PRINT_ROOT_ID = "pos-thermal-print-root";
 const PRINT_STYLE_ID = "pos-thermal-print-style";
 
