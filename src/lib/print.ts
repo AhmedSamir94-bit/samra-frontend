@@ -79,7 +79,8 @@ function buildReceiptMarkup(doc: PrintDocument) {
       ${
         doc.footerNote
           ? `<p class="pos-footer">${escapeHtml(doc.footerNote)}</p>`
-          : `<p class="pos-footer">شكراً لتعاملكم معنا</p>`
+          : `<p class="pos-footer">شكراً لتعاملكم معنا</p>
+      <p class="pos-footer-phone" dir="ltr">01007557530</p>`
       }
     </div>
   `;
@@ -242,6 +243,16 @@ function ensurePrintAssets() {
           text-align: center;
           font-size: 10px;
           overflow-wrap: anywhere;
+        }
+
+        #${PRINT_ROOT_ID} .pos-footer-phone {
+          margin: 4px 0 0;
+          text-align: center;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          direction: ltr;
+          unicode-bidi: isolate;
         }
       }
     `;
