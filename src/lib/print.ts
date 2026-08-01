@@ -32,10 +32,9 @@ export type PrintHandle = {
   close: () => void;
 };
 
-/** Common POS roll widths: 80mm (default) or 58mm */
+/** Common POS roll width */
 const THERMAL_WIDTH_MM = 80;
-const THERMAL_CONTENT_PX = 280; // ~80mm printable at 96dpi
-const CSS_PX_PER_MM = 96 / 25.4;
+const THERMAL_CONTENT_PX = 302;
 
 function escapeHtml(value: string) {
   return value
@@ -47,8 +46,9 @@ function escapeHtml(value: string) {
 }
 
 /**
- * Thermal receipt HTML sized for 80mm roll printers.
- * Page height is fitted to content at print time (see fitPageToContent).
+ * Thermal receipt HTML for 80mm roll printers.
+ * Do NOT set @page width×height — when height < width Chrome flips to landscape.
+ * Force portrait and let height follow content.
  */
 function buildPrintHtml(doc: PrintDocument) {
   const metaRows = doc.meta
@@ -80,30 +80,35 @@ function buildPrintHtml(doc: PrintDocument) {
 <head>
   <meta charset="UTF-8" />
   <title>${escapeHtml(doc.title)}</title>
-  <style id="thermal-base">
+  <style>
+    /* portrait only — never pass a custom width×height pair to @page */
+    @page {
+      size: portrait;
+      margin: 0;
+    }
     * { box-sizing: border-box; }
     html, body {
       margin: 0 !important;
       padding: 0 !important;
       background: #fff;
       color: #000;
+      width: ${THERMAL_WIDTH_MM}mm;
       height: auto !important;
       min-height: 0 !important;
-      max-height: none !important;
-      overflow: hidden !important;
+      overflow: visible !important;
     }
     body {
       font-family: Tahoma, "Segoe UI", Arial, sans-serif;
       font-size: 12px;
       line-height: 1.3;
-      width: ${THERMAL_CONTENT_PX}px;
       direction: rtl;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .receipt {
-      width: 100%;
-      padding: 4px 4px 6px;
+      width: ${THERMAL_WIDTH_MM}mm;
+      max-width: ${THERMAL_WIDTH_MM}mm;
+      padding: 2mm;
     }
     .store-title {
       margin: 0 0 2px;
@@ -162,6 +167,16 @@ function buildPrintHtml(doc: PrintDocument) {
       text-align: center;
       font-size: 11px;
     }
+    @media print {
+      @page {
+        size: portrait;
+        margin: 0;
+      }
+      html, body {
+        width: ${THERMAL_WIDTH_MM}mm !important;
+        height: auto !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -197,12 +212,13 @@ function createThermalIframe(): HTMLIFrameElement {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
   iframe.setAttribute("title", "thermal-print-frame");
+  // Start tall (portrait aspect) so Chrome does not auto-pick landscape.
   iframe.style.cssText = [
     "position:fixed",
     "top:0",
     "left:0",
-    `width:${THERMAL_CONTENT_PX + 16}px`,
-    "height:1px",
+    `width:${THERMAL_CONTENT_PX}px`,
+    "height:900px",
     "border:0",
     "opacity:0",
     "pointer-events:none",
@@ -213,48 +229,18 @@ function createThermalIframe(): HTMLIFrameElement {
 }
 
 /**
- * Measure receipt height and lock @page size to content.
- * Page height must stay >= width — if height < width, Chrome/Edge
- * treat the page as landscape and rotate the receipt.
+ * Keep the iframe in a portrait aspect ratio so the browser
+ * print dialog defaults to Portrait, not Landscape.
  */
-function fitPageToContent(frameWindow: Window, iframe: HTMLIFrameElement) {
-  const frameDoc = frameWindow.document;
-  const receipt = frameDoc.getElementById("receipt");
-  if (!receipt) return;
+function prepareThermalFrame(frameWindow: Window, iframe: HTMLIFrameElement) {
+  const receipt = frameWindow.document.getElementById("receipt");
+  const contentHeight = receipt
+    ? Math.ceil(Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height))
+    : 400;
 
-  const heightPx = Math.ceil(
-    Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height),
-  );
-  const contentHeightMm = Math.max(1, Math.ceil(heightPx / CSS_PX_PER_MM) + 2);
-  // Keep portrait: second @page length must be >= first (width).
-  const pageHeightMm = Math.max(contentHeightMm, THERMAL_WIDTH_MM + 1);
-
-  iframe.style.height = `${heightPx}px`;
-  iframe.style.width = `${THERMAL_CONTENT_PX + 16}px`;
-
-  frameDoc.getElementById("thermal-page-fit")?.remove();
-  const style = frameDoc.createElement("style");
-  style.id = "thermal-page-fit";
-  style.textContent = `
-    @page {
-      size: ${THERMAL_WIDTH_MM}mm ${pageHeightMm}mm;
-      margin: 0;
-    }
-    @media print {
-      html, body {
-        width: ${THERMAL_WIDTH_MM}mm !important;
-        height: auto !important;
-        min-height: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: hidden !important;
-      }
-      .receipt {
-        padding: 2mm !important;
-      }
-    }
-  `;
-  frameDoc.head.appendChild(style);
+  iframe.style.width = `${THERMAL_CONTENT_PX}px`;
+  // Always taller than wide — Chrome uses frame aspect to pick orientation.
+  iframe.style.height = `${Math.max(contentHeight + 24, THERMAL_CONTENT_PX + 200)}px`;
 }
 
 function runPrint(target: Window, onDone?: () => void) {
@@ -289,10 +275,9 @@ function writeFitAndPrint(
   frameDoc.write(html);
   frameDoc.close();
 
-  // Double rAF so fonts/layout are ready before measuring.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      fitPageToContent(frameWindow, iframe);
+      prepareThermalFrame(frameWindow, iframe);
       runPrint(frameWindow, onDone);
     });
   });
@@ -351,7 +336,7 @@ function printViaIframe(html: string): boolean {
     if (started) return;
     started = true;
     try {
-      fitPageToContent(frameWindow, iframe);
+      prepareThermalFrame(frameWindow, iframe);
       runPrint(frameWindow, () => cleanupIframe(iframe));
     } catch {
       cleanupIframe(iframe);
@@ -369,7 +354,7 @@ function printViaIframe(html: string): boolean {
 }
 
 /**
- * Sends a thermal receipt sized exactly to its content.
+ * Sends a thermal receipt to the printer in portrait orientation.
  */
 export function printDocument(doc: PrintDocument): boolean {
   try {
