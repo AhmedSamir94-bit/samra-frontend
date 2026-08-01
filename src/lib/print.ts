@@ -23,19 +23,11 @@ export type PrintDocument = {
   footerNote?: string;
 };
 
-/**
- * A print target opened during a user click so async work
- * (API calls) can still print afterward without popup blockers.
- */
-export type PrintHandle = {
-  writeAndPrint: (html: string) => void;
-  close: () => void;
-};
-
 /** Paper width vs safe printable width (thermal printers clip ~3–6mm each side) */
 const THERMAL_WIDTH_MM = 80;
 const THERMAL_SAFE_WIDTH_MM = 68;
-const THERMAL_CONTENT_PX = 260;
+const PRINT_ROOT_ID = "pos-thermal-print-root";
+const PRINT_STYLE_ID = "pos-thermal-print-style";
 
 function escapeHtml(value: string) {
   return value
@@ -46,18 +38,13 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#39;");
 }
 
-/**
- * Thermal receipt HTML for 80mm roll printers.
- * Do NOT set @page width×height — when height < width Chrome flips to landscape.
- * Force portrait and let height follow content.
- */
-function buildPrintHtml(doc: PrintDocument) {
+function buildReceiptMarkup(doc: PrintDocument) {
   const metaRows = doc.meta
     .map(
       (row) => `
-      <div class="meta-row">
-        <span class="meta-label">${escapeHtml(row.label)}</span>
-        <span class="meta-value">${escapeHtml(row.value)}</span>
+      <div class="pos-meta-row">
+        <span class="pos-meta-label">${escapeHtml(row.label)}</span>
+        <span class="pos-meta-value">${escapeHtml(row.value)}</span>
       </div>`,
     )
     .join("");
@@ -65,340 +52,252 @@ function buildPrintHtml(doc: PrintDocument) {
   const lineBlocks = doc.lines
     .map(
       (line) => `
-      <div class="item">
-        <div class="item-name">${escapeHtml(line.name)}</div>
-        ${line.note ? `<div class="item-note">${escapeHtml(line.note)}</div>` : ""}
-        <div class="item-row">
+      <div class="pos-item">
+        <div class="pos-item-name">${escapeHtml(line.name)}</div>
+        ${line.note ? `<div class="pos-item-note">${escapeHtml(line.note)}</div>` : ""}
+        <div class="pos-item-row">
           <span>${escapeHtml(line.quantityLabel)} × ${escapeHtml(formatCurrency(line.unitPrice))}</span>
-          <span class="item-total">${escapeHtml(formatCurrency(line.lineTotal))}</span>
+          <span class="pos-item-total">${escapeHtml(formatCurrency(line.lineTotal))}</span>
         </div>
       </div>`,
     )
     .join("");
 
-  return `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8" />
-  <title>${escapeHtml(doc.title)}</title>
-  <style>
-    /* portrait only — never pass a custom width×height pair to @page */
-    @page {
-      size: portrait;
-      margin: 0;
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
-      background: #fff;
-      color: #000;
-      width: ${THERMAL_WIDTH_MM}mm;
-      height: auto !important;
-      min-height: 0 !important;
-      overflow: hidden !important;
-    }
-    body {
-      font-family: Tahoma, "Segoe UI", Arial, sans-serif;
-      font-size: 11px;
-      line-height: 1.3;
-      direction: rtl;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .receipt {
-      width: ${THERMAL_SAFE_WIDTH_MM}mm;
-      max-width: ${THERMAL_SAFE_WIDTH_MM}mm;
-      margin: 0 auto;
-      padding: 2mm 0;
-      overflow: hidden;
-    }
-    .store-title {
-      margin: 0 0 2px;
-      font-size: 14px;
-      font-weight: 700;
-      text-align: center;
-      overflow-wrap: anywhere;
-    }
-    .subtitle {
-      margin: 0 0 6px;
-      text-align: center;
-      font-size: 10px;
-      overflow-wrap: anywhere;
-    }
-    .divider {
-      border: 0;
-      border-top: 1px dashed #000;
-      margin: 6px 0;
-    }
-    .meta-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 6px;
-      font-size: 10px;
-      margin: 1px 0;
-    }
-    .meta-label {
-      opacity: 0.8;
-      flex: 0 1 auto;
-      min-width: 0;
-    }
-    .meta-value {
-      font-weight: 700;
-      flex: 1 1 auto;
-      min-width: 0;
-      text-align: start;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-    .item { margin: 5px 0; }
-    .item-name {
-      font-weight: 700;
-      font-size: 11px;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-    .item-note {
-      font-size: 9px;
-      opacity: 0.75;
-      margin-top: 1px;
-      overflow-wrap: anywhere;
-    }
-    .item-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 6px;
-      font-size: 10px;
-      margin-top: 2px;
-    }
-    .item-row > span:first-child {
-      flex: 1 1 auto;
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-    .item-total {
-      font-weight: 700;
-      flex: 0 0 auto;
-      white-space: nowrap;
-    }
-    .total {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 700;
-      padding-top: 2px;
-    }
-    .total > span {
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-    .footer {
-      margin: 8px 0 0;
-      text-align: center;
-      font-size: 10px;
-      overflow-wrap: anywhere;
-    }
-    @media print {
+  return `
+    <div class="pos-receipt" dir="rtl">
+      <h1 class="pos-store-title">${escapeHtml(doc.title)}</h1>
+      ${doc.subtitle ? `<p class="pos-subtitle">${escapeHtml(doc.subtitle)}</p>` : ""}
+      <hr class="pos-divider" />
+      <div class="pos-meta">${metaRows}</div>
+      <hr class="pos-divider" />
+      <div class="pos-items">${lineBlocks}</div>
+      <hr class="pos-divider" />
+      <div class="pos-total">
+        <span>${escapeHtml(doc.totalLabel || "الإجمالي")}</span>
+        <span>${escapeHtml(formatCurrency(doc.total))}</span>
+      </div>
+      ${
+        doc.footerNote
+          ? `<p class="pos-footer">${escapeHtml(doc.footerNote)}</p>`
+          : `<p class="pos-footer">شكراً لتعاملكم معنا</p>`
+      }
+    </div>
+  `;
+}
+
+function ensurePrintAssets() {
+  let style = document.getElementById(PRINT_STYLE_ID) as HTMLStyleElement | null;
+  if (!style) {
+    style = document.createElement("style");
+    style.id = PRINT_STYLE_ID;
+    style.textContent = `
+      #${PRINT_ROOT_ID} {
+        display: none;
+      }
+
       @page {
         size: portrait;
         margin: 0;
       }
-      html, body {
-        width: ${THERMAL_WIDTH_MM}mm !important;
-        height: auto !important;
+
+      @media print {
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff !important;
+          width: ${THERMAL_WIDTH_MM}mm !important;
+          height: auto !important;
+        }
+
+        /* Hide the app UI — print only the receipt in this same page */
+        body > *:not(#${PRINT_ROOT_ID}) {
+          display: none !important;
+        }
+
+        #${PRINT_ROOT_ID} {
+          display: block !important;
+          position: static !important;
+          width: ${THERMAL_WIDTH_MM}mm !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff !important;
+          color: #000 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        #${PRINT_ROOT_ID} .pos-receipt {
+          width: ${THERMAL_SAFE_WIDTH_MM}mm;
+          max-width: ${THERMAL_SAFE_WIDTH_MM}mm;
+          margin: 0 auto;
+          padding: 2mm 0;
+          font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+          font-size: 11px;
+          line-height: 1.3;
+          direction: rtl;
+          overflow: hidden;
+        }
+
+        #${PRINT_ROOT_ID} .pos-store-title {
+          margin: 0 0 2px;
+          font-size: 14px;
+          font-weight: 700;
+          text-align: center;
+          overflow-wrap: anywhere;
+        }
+
+        #${PRINT_ROOT_ID} .pos-subtitle {
+          margin: 0 0 6px;
+          text-align: center;
+          font-size: 10px;
+          overflow-wrap: anywhere;
+        }
+
+        #${PRINT_ROOT_ID} .pos-divider {
+          border: 0;
+          border-top: 1px dashed #000;
+          margin: 6px 0;
+        }
+
+        #${PRINT_ROOT_ID} .pos-meta-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 6px;
+          font-size: 10px;
+          margin: 1px 0;
+        }
+
+        #${PRINT_ROOT_ID} .pos-meta-label {
+          opacity: 0.8;
+          flex: 0 1 auto;
+          min-width: 0;
+        }
+
+        #${PRINT_ROOT_ID} .pos-meta-value {
+          font-weight: 700;
+          flex: 1 1 auto;
+          min-width: 0;
+          text-align: start;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        #${PRINT_ROOT_ID} .pos-item {
+          margin: 5px 0;
+        }
+
+        #${PRINT_ROOT_ID} .pos-item-name {
+          font-weight: 700;
+          font-size: 11px;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        #${PRINT_ROOT_ID} .pos-item-note {
+          font-size: 9px;
+          opacity: 0.75;
+          margin-top: 1px;
+          overflow-wrap: anywhere;
+        }
+
+        #${PRINT_ROOT_ID} .pos-item-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 6px;
+          font-size: 10px;
+          margin-top: 2px;
+        }
+
+        #${PRINT_ROOT_ID} .pos-item-row > span:first-child {
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+
+        #${PRINT_ROOT_ID} .pos-item-total {
+          font-weight: 700;
+          flex: 0 0 auto;
+          white-space: nowrap;
+        }
+
+        #${PRINT_ROOT_ID} .pos-total {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+          font-weight: 700;
+          padding-top: 2px;
+        }
+
+        #${PRINT_ROOT_ID} .pos-total > span {
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+
+        #${PRINT_ROOT_ID} .pos-footer {
+          margin: 8px 0 0;
+          text-align: center;
+          font-size: 10px;
+          overflow-wrap: anywhere;
+        }
       }
-      .receipt {
-        width: ${THERMAL_SAFE_WIDTH_MM}mm !important;
-        max-width: ${THERMAL_SAFE_WIDTH_MM}mm !important;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="receipt" id="receipt">
-    <h1 class="store-title">${escapeHtml(doc.title)}</h1>
-    ${doc.subtitle ? `<p class="subtitle">${escapeHtml(doc.subtitle)}</p>` : ""}
-    <hr class="divider" />
-    <div class="meta">${metaRows}</div>
-    <hr class="divider" />
-    <div class="items">${lineBlocks}</div>
-    <hr class="divider" />
-    <div class="total">
-      <span>${escapeHtml(doc.totalLabel || "الإجمالي")}</span>
-      <span>${escapeHtml(formatCurrency(doc.total))}</span>
-    </div>
-    ${
-      doc.footerNote
-        ? `<p class="footer">${escapeHtml(doc.footerNote)}</p>`
-        : `<p class="footer">شكراً لتعاملكم معنا</p>`
-    }
-  </div>
-</body>
-</html>`;
+    `;
+    document.head.appendChild(style);
+  }
+
+  let root = document.getElementById(PRINT_ROOT_ID);
+  if (!root) {
+    root = document.createElement("div");
+    root.id = PRINT_ROOT_ID;
+    root.setAttribute("aria-hidden", "true");
+    document.body.appendChild(root);
+  }
+
+  return root;
 }
 
-function cleanupIframe(iframe: HTMLIFrameElement) {
-  setTimeout(() => {
-    iframe.remove();
-  }, 2500);
-}
-
-function createThermalIframe(): HTMLIFrameElement {
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("aria-hidden", "true");
-  iframe.setAttribute("title", "thermal-print-frame");
-  // Start tall (portrait aspect) so Chrome does not auto-pick landscape.
-  iframe.style.cssText = [
-    "position:fixed",
-    "top:0",
-    "left:0",
-    `width:${THERMAL_CONTENT_PX}px`,
-    "height:900px",
-    "border:0",
-    "opacity:0",
-    "pointer-events:none",
-    "z-index:-1",
-  ].join(";");
-  document.body.appendChild(iframe);
-  return iframe;
-}
-
-/**
- * Keep the iframe in a portrait aspect ratio so the browser
- * print dialog defaults to Portrait, not Landscape.
- */
-function prepareThermalFrame(frameWindow: Window, iframe: HTMLIFrameElement) {
-  const receipt = frameWindow.document.getElementById("receipt");
-  const contentHeight = receipt
-    ? Math.ceil(Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height))
-    : 400;
-
-  iframe.style.width = `${THERMAL_CONTENT_PX}px`;
-  // Always taller than wide — Chrome uses frame aspect to pick orientation.
-  iframe.style.height = `${Math.max(contentHeight + 24, THERMAL_CONTENT_PX + 200)}px`;
-}
-
-function runPrint(target: Window, onDone?: () => void) {
-  let printed = false;
-  const trigger = () => {
-    if (printed) return;
-    printed = true;
-    try {
-      target.focus();
-      target.print();
-    } catch {
-      // ignore
-    } finally {
-      onDone?.();
-    }
-  };
-
-  requestAnimationFrame(() => {
-    setTimeout(trigger, 200);
-  });
-  setTimeout(trigger, 1200);
-}
-
-function writeFitAndPrint(
-  iframe: HTMLIFrameElement,
-  frameWindow: Window,
-  html: string,
-  onDone?: () => void,
-) {
-  const frameDoc = frameWindow.document;
-  frameDoc.open();
-  frameDoc.write(html);
-  frameDoc.close();
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      prepareThermalFrame(frameWindow, iframe);
-      runPrint(frameWindow, onDone);
-    });
-  });
-}
-
-function createIframeHandle(iframe: HTMLIFrameElement, frameWindow: Window): PrintHandle {
-  return {
-    writeAndPrint: (html: string) => {
-      try {
-        writeFitAndPrint(iframe, frameWindow, html, () => cleanupIframe(iframe));
-      } catch {
-        cleanupIframe(iframe);
-      }
-    },
-    close: () => cleanupIframe(iframe),
-  };
-}
-
-/**
- * Open a print target immediately (must run inside a click handler).
- */
-export function openPrintHandle(): PrintHandle | null {
-  try {
-    const iframe = createThermalIframe();
-    const frameWindow = iframe.contentWindow;
-    if (!frameWindow) {
-      iframe.remove();
-      return null;
-    }
-    return createIframeHandle(iframe, frameWindow);
-  } catch {
-    return null;
+function cleanupPrintRoot() {
+  const root = document.getElementById(PRINT_ROOT_ID);
+  if (root) {
+    root.innerHTML = "";
   }
 }
 
-export function printDocumentIntoHandle(handle: PrintHandle, doc: PrintDocument): boolean {
-  try {
-    handle.writeAndPrint(buildPrintHtml(doc));
-    return true;
-  } catch {
-    handle.close();
-    return false;
-  }
-}
-
-function printViaIframe(html: string): boolean {
-  const iframe = createThermalIframe();
-  const frameWindow = iframe.contentWindow;
-  if (!frameWindow) {
-    iframe.remove();
-    return false;
-  }
-
-  let started = false;
-  const start = () => {
-    if (started) return;
-    started = true;
-    try {
-      prepareThermalFrame(frameWindow, iframe);
-      runPrint(frameWindow, () => cleanupIframe(iframe));
-    } catch {
-      cleanupIframe(iframe);
-    }
-  };
-
-  iframe.onload = () => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(start);
-    });
-  };
-  iframe.srcdoc = html;
-  setTimeout(start, 1500);
-  return true;
-}
-
 /**
- * Sends a thermal receipt to the printer in portrait orientation.
+ * Print from the current page only — no new tab/window/iframe.
+ * The system print dialog may still appear (browser security).
  */
 export function printDocument(doc: PrintDocument): boolean {
   try {
-    return printViaIframe(buildPrintHtml(doc));
+    const root = ensurePrintAssets();
+    root.innerHTML = buildReceiptMarkup(doc);
+
+    const finish = () => {
+      cleanupPrintRoot();
+      window.removeEventListener("afterprint", finish);
+    };
+
+    window.addEventListener("afterprint", finish);
+
+    // Let the DOM paint the receipt node before printing.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        try {
+          window.print();
+        } catch {
+          finish();
+        }
+        // Fallback cleanup if afterprint never fires.
+        setTimeout(finish, 2000);
+      });
+    });
+
+    return true;
   } catch {
+    cleanupPrintRoot();
     return false;
   }
 }

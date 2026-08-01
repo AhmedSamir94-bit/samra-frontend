@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { formatCurrency } from "@/lib/currency";
 import { calculateSaleItemsTotal } from "@/lib/invoice-math";
-import { openPrintHandle, printDocumentIntoHandle, type PrintHandle } from "@/lib/print";
+import { printDocument } from "@/lib/print";
 import { api } from "@/lib/api";
 import { lookupProductByBarcode } from "@/lib/barcode";
 import type { Product, SaleItem } from "@/types";
@@ -53,12 +53,12 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: ({ items }: { items: SaleItem[]; printReceipt: boolean; printHandle: PrintHandle | null }) =>
+    mutationFn: ({ items }: { items: SaleItem[]; printReceipt: boolean }) =>
       api.createSale(
         items.map((item) => ({ id: item.id, name: item.name, quantity: item.quantity })),
         user?.name || "البائع الرئيسي"
       ),
-    onSuccess: (sale, { printReceipt, printHandle }) => {
+    onSuccess: (sale, { printReceipt }) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       toast({
@@ -66,8 +66,8 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
         description: `رقم الفاتورة: ${sale.invoiceNumber} - المبلغ: ${formatCurrency(sale.total)}`,
       });
 
-      if (printReceipt && printHandle) {
-        const printed = printDocumentIntoHandle(printHandle, {
+      if (printReceipt) {
+        const printed = printDocument({
           title: "فاتورة مبيعات",
           subtitle: sale.invoiceNumber,
           meta: [
@@ -98,8 +98,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
       cartRef.current = [];
       setCart([]);
     },
-    onError: (error: Error, { printHandle }) => {
-      printHandle?.close();
+    onError: (error: Error) => {
       toast({
         title: "فشل إتمام البيع",
         description: error.message,
@@ -275,18 +274,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
       return;
     }
 
-    // Prepare print frame during the click (before the API call).
-    const printHandle = printReceipt ? openPrintHandle() : null;
-    if (printReceipt && !printHandle) {
-      toast({
-        title: "تعذر تجهيز الطباعة",
-        description: "جرّب مرة أخرى أو اطبع الفاتورة من قائمة المبيعات",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    checkoutMutation.mutate({ items: cart, printReceipt, printHandle });
+    checkoutMutation.mutate({ items: cart, printReceipt });
   };
 
   return (
