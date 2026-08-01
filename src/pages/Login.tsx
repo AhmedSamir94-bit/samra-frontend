@@ -53,7 +53,7 @@ export default function Login() {
       <div className="absolute top-4 left-4">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-md shadow-lg border-slate-300 dark:border-slate-500 dark:bg-slate-900 dark:text-white">
+      <Card className="app-card-edge w-full max-w-md dark:bg-slate-900 dark:text-white">
         <CardHeader className="space-y-4 text-center">
           <div className="mx-auto w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
             <Calculator className="w-7 h-7 text-white" />

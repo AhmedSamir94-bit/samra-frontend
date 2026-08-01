@@ -112,12 +112,32 @@ All colors MUST be HSL.
     @apply min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950;
   }
 
+  /*
+   * Windows (especially 125%/150% scaling) often drops 1px CSS borders.
+   * Use a 2px border + box-shadow outline so card edges stay visible.
+   */
+  .app-card-edge {
+    border-width: 2px;
+    border-style: solid;
+    border-color: #94a3b8; /* slate-400 */
+    box-shadow:
+      0 0 0 1px rgba(15, 23, 42, 0.12),
+      0 1px 3px rgba(15, 23, 42, 0.08);
+  }
+
+  .dark .app-card-edge {
+    border-color: #94a3b8; /* slate-400 stays visible on dark navy */
+    box-shadow:
+      0 0 0 1px rgba(226, 232, 240, 0.35),
+      0 1px 3px rgba(0, 0, 0, 0.45);
+  }
+
   .app-surface {
-    @apply border border-slate-300 bg-white shadow-sm dark:border-slate-500 dark:bg-slate-900;
+    @apply app-card-edge bg-white dark:bg-slate-900;
   }
 
   .app-surface-muted {
-    @apply border border-slate-300 bg-slate-50 shadow-sm dark:border-slate-500 dark:bg-slate-900/95;
+    @apply app-card-edge bg-slate-50 dark:bg-slate-900;
   }
 
   .app-heading {

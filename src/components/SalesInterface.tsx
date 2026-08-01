@@ -345,7 +345,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
                   {products.map((product) => (
                     <Card
                       key={product.id}
-                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-slate-300 dark:border-slate-500 hover:border-blue-400 dark:hover:border-blue-500"
+                      className="app-card-edge cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-blue-400 dark:hover:border-blue-400"
                       onClick={() => addToCart(product)}
                     >
                       <CardContent className="p-4 text-center">
