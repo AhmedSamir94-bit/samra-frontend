@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { formatCurrency } from "@/lib/currency";
 import { calculateSaleItemsTotal } from "@/lib/invoice-math";
-import { printDocument } from "@/lib/print";
+import { openPrintHandle, printDocumentIntoHandle, type PrintHandle } from "@/lib/print";
 import { api } from "@/lib/api";
 import { lookupProductByBarcode } from "@/lib/barcode";
 import type { Product, SaleItem } from "@/types";
@@ -53,22 +53,53 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: ({ items }: { items: SaleItem[]; printReceipt: boolean; printHandle: PrintHandle | null }) =>
       api.createSale(
-        cart.map((item) => ({ id: item.id, name: item.name, quantity: item.quantity })),
-        "البائع الرئيسي"
+        items.map((item) => ({ id: item.id, name: item.name, quantity: item.quantity })),
+        user?.name || "البائع الرئيسي"
       ),
-    onSuccess: (sale) => {
+    onSuccess: (sale, { printReceipt, printHandle }) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       toast({
         title: "تمت عملية البيع بنجاح",
         description: `رقم الفاتورة: ${sale.invoiceNumber} - المبلغ: ${formatCurrency(sale.total)}`,
       });
+
+      if (printReceipt && printHandle) {
+        const printed = printDocumentIntoHandle(printHandle, {
+          title: "فاتورة مبيعات",
+          subtitle: sale.invoiceNumber,
+          meta: [
+            { label: "رقم الفاتورة", value: sale.invoiceNumber },
+            { label: "التاريخ", value: sale.date },
+            { label: "الوقت", value: sale.time },
+            { label: "البائع", value: sale.cashier },
+          ],
+          lines: sale.items.map((item) => ({
+            name: item.name,
+            quantityLabel: formatQuantity(item.quantity, item.unitType),
+            unitPrice: item.price,
+            lineTotal: item.price * item.quantity,
+            note: item.barcode ? `باركود: ${item.barcode}` : undefined,
+          })),
+          total: sale.total,
+        });
+
+        if (!printed) {
+          toast({
+            title: "تم البيع لكن تعذرت الطباعة",
+            description: "يمكنك طباعة الفاتورة من قائمة المبيعات",
+            variant: "destructive",
+          });
+        }
+      }
+
       cartRef.current = [];
       setCart([]);
     },
-    onError: (error: Error) => {
+    onError: (error: Error, { printHandle }) => {
+      printHandle?.close();
       toast({
         title: "فشل إتمام البيع",
         description: error.message,
@@ -224,7 +255,7 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
       cart.map((item) => ({ price: item.price, quantity: item.quantity })),
     );
 
-  const handleCheckout = () => {
+  const handleCheckout = (printReceipt = false) => {
     if (cart.length === 0) {
       toast({
         title: "السلة فارغة",
@@ -244,58 +275,19 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
       return;
     }
 
-    checkoutMutation.mutate();
-  };
-
-  const handlePrintCart = () => {
-    if (cart.length === 0) {
+    // Open print target during the click (before the API call) so popup
+    // blockers don't block printing after the async sale completes.
+    const printHandle = printReceipt ? openPrintHandle() : null;
+    if (printReceipt && !printHandle) {
       toast({
-        title: "السلة فارغة",
-        description: "لا توجد منتجات للطباعة",
+        title: "تعذر فتح الطباعة",
+        description: "اسمح بالنوافذ المنبثقة لهذا الموقع ثم أعد المحاولة",
         variant: "destructive",
       });
       return;
     }
 
-    const now = new Date();
-    const printed = printDocument({
-      title: "إيصال نقطة البيع",
-      subtitle: "مسودة قبل إتمام البيع",
-      meta: [
-        {
-          label: "التاريخ",
-          value: now.toLocaleDateString("ar-EG"),
-        },
-        {
-          label: "الوقت",
-          value: now.toLocaleTimeString("ar-EG", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-        {
-          label: "البائع",
-          value: user?.name || "البائع الرئيسي",
-        },
-      ],
-      lines: cart.map((item) => ({
-        name: item.name,
-        quantityLabel: formatQuantity(item.quantity, item.unitType),
-        unitPrice: item.price,
-        lineTotal: item.price * item.quantity,
-        note: item.barcode ? `باركود: ${item.barcode}` : undefined,
-      })),
-      total: calculateTotal(),
-      footerNote: "هذه مسودة — لم يتم إتمام البيع بعد",
-    });
-
-    if (!printed) {
-      toast({
-        title: "تعذر الطباعة",
-        description: "يرجى السماح بالنوافذ المنبثقة ثم المحاولة مرة أخرى",
-        variant: "destructive",
-      });
-    }
+    checkoutMutation.mutate({ items: cart, printReceipt, printHandle });
   };
 
   return (
@@ -467,22 +459,32 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
                     <div className="grid grid-cols-2 gap-2">
                       <Button
                         type="button"
-                        variant="outline"
-                        className="border-blue-200 hover:bg-blue-50"
-                        onClick={handlePrintCart}
-                      >
-                        <Printer className="w-4 h-4 me-2" />
-                        طباعة
-                      </Button>
-                      <Button
-                        onClick={handleCheckout}
+                        onClick={() => handleCheckout(false)}
                         disabled={checkoutMutation.isPending}
                         className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                       >
-                        {checkoutMutation.isPending ? (
+                        {checkoutMutation.isPending &&
+                        !checkoutMutation.variables?.printReceipt ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          "إتمام البيع"
+                          "بيع"
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-blue-200 hover:bg-blue-50"
+                        onClick={() => handleCheckout(true)}
+                        disabled={checkoutMutation.isPending}
+                      >
+                        {checkoutMutation.isPending &&
+                        checkoutMutation.variables?.printReceipt ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Printer className="w-4 h-4 me-2" />
+                            بيع + طباعة
+                          </>
                         )}
                       </Button>
                     </div>

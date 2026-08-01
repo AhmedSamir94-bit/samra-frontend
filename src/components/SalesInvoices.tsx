@@ -47,7 +47,7 @@ const SalesInvoices = () => {
     if (!printed) {
       toast({
         title: "تعذر الطباعة",
-        description: "يرجى السماح بالنوافذ المنبثقة ثم المحاولة مرة أخرى",
+        description: "تعذر فتح نافذة الطباعة. جرّب مرة أخرى أو استخدم متصفحاً آخر",
         variant: "destructive",
       });
     }
