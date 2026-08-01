@@ -32,6 +32,11 @@ export type PrintHandle = {
   close: () => void;
 };
 
+/** Common POS roll widths: 80mm (default) or 58mm */
+const THERMAL_WIDTH_MM = 80;
+const THERMAL_CONTENT_PX = 280; // ~80mm printable at 96dpi
+const CSS_PX_PER_MM = 96 / 25.4;
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -41,6 +46,10 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * Thermal receipt HTML sized for 80mm roll printers.
+ * Page height is fitted to content at print time (see fitPageToContent).
+ */
 function buildPrintHtml(doc: PrintDocument) {
   const metaRows = doc.meta
     .map(
@@ -52,18 +61,17 @@ function buildPrintHtml(doc: PrintDocument) {
     )
     .join("");
 
-  const lineRows = doc.lines
+  const lineBlocks = doc.lines
     .map(
       (line) => `
-      <tr>
-        <td>
-          <div class="item-name">${escapeHtml(line.name)}</div>
-          ${line.note ? `<div class="item-note">${escapeHtml(line.note)}</div>` : ""}
-        </td>
-        <td class="num">${escapeHtml(line.quantityLabel)}</td>
-        <td class="num">${escapeHtml(formatCurrency(line.unitPrice))}</td>
-        <td class="num">${escapeHtml(formatCurrency(line.lineTotal))}</td>
-      </tr>`,
+      <div class="item">
+        <div class="item-name">${escapeHtml(line.name)}</div>
+        ${line.note ? `<div class="item-note">${escapeHtml(line.note)}</div>` : ""}
+        <div class="item-row">
+          <span>${escapeHtml(line.quantityLabel)} × ${escapeHtml(formatCurrency(line.unitPrice))}</span>
+          <span class="item-total">${escapeHtml(formatCurrency(line.lineTotal))}</span>
+        </div>
+      </div>`,
     )
     .join("");
 
@@ -72,110 +80,99 @@ function buildPrintHtml(doc: PrintDocument) {
 <head>
   <meta charset="UTF-8" />
   <title>${escapeHtml(doc.title)}</title>
-  <style>
+  <style id="thermal-base">
     * { box-sizing: border-box; }
     html, body {
-      margin: 0;
-      padding: 0;
+      margin: 0 !important;
+      padding: 0 !important;
       background: #fff;
-      color: #111;
+      color: #000;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: hidden !important;
     }
     body {
-      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-      padding: 24px;
+      font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.3;
+      width: ${THERMAL_CONTENT_PX}px;
       direction: rtl;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .sheet {
-      max-width: 720px;
-      margin: 0 auto;
+    .receipt {
+      width: 100%;
+      padding: 4px 4px 6px;
     }
-    h1 {
-      margin: 0 0 4px;
-      font-size: 22px;
+    .store-title {
+      margin: 0 0 2px;
+      font-size: 15px;
+      font-weight: 700;
       text-align: center;
     }
     .subtitle {
-      margin: 0 0 16px;
+      margin: 0 0 6px;
       text-align: center;
-      color: #555;
-      font-size: 13px;
+      font-size: 11px;
     }
-    .meta {
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 12px 14px;
-      margin-bottom: 16px;
-      background: #f8fafc;
+    .divider {
+      border: 0;
+      border-top: 1px dashed #000;
+      margin: 6px 0;
     }
     .meta-row {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
-      padding: 4px 0;
-      font-size: 13px;
+      gap: 8px;
+      font-size: 11px;
+      margin: 1px 0;
     }
-    .meta-label { color: #666; }
-    .meta-value { font-weight: 600; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 16px;
-    }
-    th, td {
-      border-bottom: 1px solid #e5e7eb;
-      padding: 10px 8px;
-      text-align: right;
-      font-size: 13px;
-      vertical-align: top;
-    }
-    th {
-      background: #f1f5f9;
+    .meta-label { opacity: 0.8; }
+    .meta-value { font-weight: 700; text-align: left; }
+    .item { margin: 5px 0; }
+    .item-name {
       font-weight: 700;
+      font-size: 12px;
+      word-break: break-word;
     }
-    .num { white-space: nowrap; }
-    .item-name { font-weight: 600; }
-    .item-note { color: #666; font-size: 11px; margin-top: 2px; }
+    .item-note {
+      font-size: 10px;
+      opacity: 0.75;
+      margin-top: 1px;
+    }
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11px;
+      margin-top: 2px;
+    }
+    .item-total { font-weight: 700; white-space: nowrap; }
     .total {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-top: 2px solid #111;
-      padding-top: 12px;
-      font-size: 18px;
+      font-size: 14px;
       font-weight: 700;
+      padding-top: 2px;
     }
     .footer {
-      margin-top: 20px;
+      margin: 8px 0 0;
       text-align: center;
-      color: #777;
-      font-size: 12px;
-    }
-    @media print {
-      body { padding: 12px; }
-      .sheet { max-width: none; }
+      font-size: 11px;
     }
   </style>
 </head>
 <body>
-  <div class="sheet">
-    <h1>${escapeHtml(doc.title)}</h1>
+  <div class="receipt" id="receipt">
+    <h1 class="store-title">${escapeHtml(doc.title)}</h1>
     ${doc.subtitle ? `<p class="subtitle">${escapeHtml(doc.subtitle)}</p>` : ""}
+    <hr class="divider" />
     <div class="meta">${metaRows}</div>
-    <table>
-      <thead>
-        <tr>
-          <th>الصنف</th>
-          <th>الكمية</th>
-          <th>السعر</th>
-          <th>الإجمالي</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${lineRows}
-      </tbody>
-    </table>
+    <hr class="divider" />
+    <div class="items">${lineBlocks}</div>
+    <hr class="divider" />
     <div class="total">
       <span>${escapeHtml(doc.totalLabel || "الإجمالي")}</span>
       <span>${escapeHtml(formatCurrency(doc.total))}</span>
@@ -193,20 +190,19 @@ function buildPrintHtml(doc: PrintDocument) {
 function cleanupIframe(iframe: HTMLIFrameElement) {
   setTimeout(() => {
     iframe.remove();
-  }, 2000);
+  }, 2500);
 }
 
-function createSizedIframe(): HTMLIFrameElement {
+function createThermalIframe(): HTMLIFrameElement {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
-  iframe.setAttribute("title", "print-frame");
-  // Chrome prints blank pages from 0×0 iframes — keep a real size off-screen.
+  iframe.setAttribute("title", "thermal-print-frame");
   iframe.style.cssText = [
     "position:fixed",
     "top:0",
     "left:0",
-    "width:1024px",
-    "height:1400px",
+    `width:${THERMAL_CONTENT_PX + 16}px`,
+    "height:1px",
     "border:0",
     "opacity:0",
     "pointer-events:none",
@@ -214,6 +210,48 @@ function createSizedIframe(): HTMLIFrameElement {
   ].join(";");
   document.body.appendChild(iframe);
   return iframe;
+}
+
+/**
+ * Measure receipt height and lock @page size to that exact size
+ * so the printer does not feed a full A4 of blank paper.
+ */
+function fitPageToContent(frameWindow: Window, iframe: HTMLIFrameElement) {
+  const frameDoc = frameWindow.document;
+  const receipt = frameDoc.getElementById("receipt");
+  if (!receipt) return;
+
+  // Let layout settle, then measure content only.
+  const heightPx = Math.ceil(
+    Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height),
+  );
+  const heightMm = Math.max(20, Math.ceil(heightPx / CSS_PX_PER_MM) + 2);
+
+  iframe.style.height = `${heightPx}px`;
+  iframe.style.width = `${THERMAL_CONTENT_PX + 16}px`;
+
+  frameDoc.getElementById("thermal-page-fit")?.remove();
+  const style = frameDoc.createElement("style");
+  style.id = "thermal-page-fit";
+  style.textContent = `
+    @page {
+      size: ${THERMAL_WIDTH_MM}mm ${heightMm}mm;
+      margin: 0;
+    }
+    @media print {
+      html, body {
+        width: ${THERMAL_WIDTH_MM}mm !important;
+        height: ${heightMm}mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+      .receipt {
+        padding: 2mm !important;
+      }
+    }
+  `;
+  frameDoc.head.appendChild(style);
 }
 
 function runPrint(target: Window, onDone?: () => void) {
@@ -231,87 +269,57 @@ function runPrint(target: Window, onDone?: () => void) {
     }
   };
 
-  // Allow layout/paint before opening the dialog.
   requestAnimationFrame(() => {
     setTimeout(trigger, 200);
   });
   setTimeout(trigger, 1200);
 }
 
+function writeFitAndPrint(
+  iframe: HTMLIFrameElement,
+  frameWindow: Window,
+  html: string,
+  onDone?: () => void,
+) {
+  const frameDoc = frameWindow.document;
+  frameDoc.open();
+  frameDoc.write(html);
+  frameDoc.close();
+
+  // Double rAF so fonts/layout are ready before measuring.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      fitPageToContent(frameWindow, iframe);
+      runPrint(frameWindow, onDone);
+    });
+  });
+}
+
+function createIframeHandle(iframe: HTMLIFrameElement, frameWindow: Window): PrintHandle {
+  return {
+    writeAndPrint: (html: string) => {
+      try {
+        writeFitAndPrint(iframe, frameWindow, html, () => cleanupIframe(iframe));
+      } catch {
+        cleanupIframe(iframe);
+      }
+    },
+    close: () => cleanupIframe(iframe),
+  };
+}
+
 /**
  * Open a print target immediately (must run inside a click handler).
- * Use this before async work, then call printDocumentIntoHandle afterward.
  */
 export function openPrintHandle(): PrintHandle | null {
-  // Prefer a real window opened in the user gesture — survives async waits.
   try {
-    const printWindow = window.open("", "_blank", "width=820,height=900");
-    if (printWindow) {
-      printWindow.document.open();
-      printWindow.document.write(
-        `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8" /><title>جاري التحضير</title></head><body style="font-family:sans-serif;padding:24px;direction:rtl;color:#333"><p>جاري تجهيز الفاتورة للطباعة...</p></body></html>`,
-      );
-      printWindow.document.close();
-
-      return {
-        writeAndPrint: (html: string) => {
-          try {
-            printWindow.document.open();
-            printWindow.document.write(html);
-            printWindow.document.close();
-            runPrint(printWindow, () => {
-              setTimeout(() => {
-                try {
-                  printWindow.close();
-                } catch {
-                  // ignore
-                }
-              }, 1000);
-            });
-          } catch {
-            try {
-              printWindow.close();
-            } catch {
-              // ignore
-            }
-          }
-        },
-        close: () => {
-          try {
-            printWindow.close();
-          } catch {
-            // ignore
-          }
-        },
-      };
-    }
-  } catch {
-    // Fall through to iframe.
-  }
-
-  // No popup permission — use a hidden iframe created during the click.
-  try {
-    const iframe = createSizedIframe();
+    const iframe = createThermalIframe();
     const frameWindow = iframe.contentWindow;
     if (!frameWindow) {
       iframe.remove();
       return null;
     }
-
-    return {
-      writeAndPrint: (html: string) => {
-        try {
-          const frameDoc = frameWindow.document;
-          frameDoc.open();
-          frameDoc.write(html);
-          frameDoc.close();
-          runPrint(frameWindow, () => cleanupIframe(iframe));
-        } catch {
-          cleanupIframe(iframe);
-        }
-      },
-      close: () => cleanupIframe(iframe),
-    };
+    return createIframeHandle(iframe, frameWindow);
   } catch {
     return null;
   }
@@ -327,12 +335,8 @@ export function printDocumentIntoHandle(handle: PrintHandle, doc: PrintDocument)
   }
 }
 
-/**
- * Chrome prints blank pages from 0×0 iframes.
- * Keep a real layout size, just move it off-screen.
- */
 function printViaIframe(html: string): boolean {
-  const iframe = createSizedIframe();
+  const iframe = createThermalIframe();
   const frameWindow = iframe.contentWindow;
   if (!frameWindow) {
     iframe.remove();
@@ -343,25 +347,30 @@ function printViaIframe(html: string): boolean {
   const start = () => {
     if (started) return;
     started = true;
-    runPrint(frameWindow, () => cleanupIframe(iframe));
+    try {
+      fitPageToContent(frameWindow, iframe);
+      runPrint(frameWindow, () => cleanupIframe(iframe));
+    } catch {
+      cleanupIframe(iframe);
+    }
   };
 
-  iframe.onload = () => start();
+  iframe.onload = () => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(start);
+    });
+  };
   iframe.srcdoc = html;
-  // Safety if onload never fires.
-  setTimeout(start, 1200);
+  setTimeout(start, 1500);
   return true;
 }
 
 /**
- * Opens the browser print dialog for an invoice/receipt.
- * Uses a hidden iframe so popup blockers never interfere.
+ * Sends a thermal receipt sized exactly to its content.
  */
 export function printDocument(doc: PrintDocument): boolean {
-  const html = buildPrintHtml(doc);
-
   try {
-    return printViaIframe(html);
+    return printViaIframe(buildPrintHtml(doc));
   } catch {
     return false;
   }

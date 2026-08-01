@@ -275,13 +275,12 @@ const SalesInterface = ({ isActive = true }: SalesInterfaceProps) => {
       return;
     }
 
-    // Open print target during the click (before the API call) so popup
-    // blockers don't block printing after the async sale completes.
+    // Prepare print frame during the click (before the API call).
     const printHandle = printReceipt ? openPrintHandle() : null;
     if (printReceipt && !printHandle) {
       toast({
-        title: "تعذر فتح الطباعة",
-        description: "اسمح بالنوافذ المنبثقة لهذا الموقع ثم أعد المحاولة",
+        title: "تعذر تجهيز الطباعة",
+        description: "جرّب مرة أخرى أو اطبع الفاتورة من قائمة المبيعات",
         variant: "destructive",
       });
       return;
